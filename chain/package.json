@@ -1,0 +1,16 @@
+{
+  "name": "trude-chain",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "hh": "hardhat --config hardhat.config.cjs",
+    "hh:compile": "hardhat --config hardhat.config.cjs compile",
+    "hh:test": "hardhat --config hardhat.config.cjs test"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.1",
+    "@types/mocha": "^10.0.10",
+    "hardhat": "^2.27.0",
+    "typescript": "^5.7.2"
+  }
+}

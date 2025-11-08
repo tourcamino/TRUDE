@@ -41,7 +41,7 @@ jobs:
 
       - name: Run Mythril analysis on contracts
         run: |
-          myth analyze TRUDE/contracts/*.sol -o jsonv2 > reports/mythril.json || true
+          myth analyze contracts/*.sol -o jsonv2 > reports/mythril.json || true
 
       - name: Upload Mythril report artifact
         if: always()

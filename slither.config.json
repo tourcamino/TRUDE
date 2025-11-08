@@ -1,0 +1,9 @@
+{
+  "solc_version": "0.8.25",
+  "filter_paths": ["node_modules"],
+  "solc_args": "--allow-paths node_modules",
+  "detectors_to_exclude": [
+    "similar-names"
+  ],
+  "target": "contracts"
+}

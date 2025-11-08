@@ -1,0 +1,80 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  address   String   @unique
+  createdAt DateTime @default(now())
+  
+  deposits  Deposit[]
+  profits   Profit[]
+  affiliateRelation Affiliate? @relation("UserAffiliate")
+  referredUsers     Affiliate[] @relation("ReferrerAffiliate")
+}
+
+model Vault {
+  id             Int      @id @default(autoincrement())
+  address        String   @unique
+  tokenAddress   String   // ERC-20 stablecoin contract address on Ethereum
+  tokenSymbol    String   // Stablecoin symbol (e.g., USDC, USDT, DAI)
+  ownerAddress   String
+  ledgerAddress  String
+  totalValueLocked String @default("0") // Store as string in token's smallest unit (e.g., USDC uses 6 decimals)
+  createdAt      DateTime @default(now())
+  isPaused       Boolean  @default(false)
+  
+  deposits       Deposit[]
+  profits        Profit[]
+}
+
+model Deposit {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  vaultId   Int
+  amount    String   // Stablecoin amount in smallest unit (e.g., 10 USDC = 10000000 for 6 decimals)
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id])
+  vault     Vault    @relation(fields: [vaultId], references: [id])
+}
+
+model Profit {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  vaultId    Int
+  amount     String   // Stablecoin profit amount in smallest unit
+  withdrawn  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  
+  user       User     @relation(fields: [userId], references: [id])
+  vault      Vault    @relation(fields: [vaultId], references: [id])
+}
+
+model Affiliate {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  referrerId      Int
+  totalEarnings   String   @default("0") // Stablecoin earnings in smallest unit
+  createdAt       DateTime @default(now())
+  
+  user            User     @relation("UserAffiliate", fields: [userId], references: [id])
+  referrer        User     @relation("ReferrerAffiliate", fields: [referrerId], references: [id])
+}
+
+model FactorySettings {
+  id                 Int      @id @default(autoincrement())
+  minDeposit         String   @default("10000000") // Minimum deposit in token's smallest unit (e.g., 10 USDC = 10000000 for 6 decimals)
+  affiliateShareBps  Int      @default(5000) // 50%
+  maxFeePercent      Int      @default(20) // 20%
+  isPaused           Boolean  @default(false)
+  updatedAt          DateTime @updatedAt
+}

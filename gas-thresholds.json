@@ -1,0 +1,7 @@
+{
+  "TrudeVault#deposit": 120000,
+  "TrudeVault#withdraw": 150000,
+  "TrudeFactory#createVault": 400000,
+  "TrudeAffiliate#registerAffiliate": 180000,
+  "USDCMock#transfer": 70000
+}

@@ -30,42 +30,36 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        working-directory: TRUDE
 
       - name: Prepare reports dir
         run: mkdir -p reports
-        working-directory: TRUDE
 
       - name: Run Hardhat tests (full)
         if: ${{ inputs.suite == 'full' }}
         run: npm run hh:test:junit
-        working-directory: TRUDE
 
       - name: Run Hardhat tests (smoke)
         if: ${{ inputs.suite == 'smoke' }}
         run: npm run hh:test:smoke:junit
-        working-directory: TRUDE
 
       - name: Upload Hardhat JUnit artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: hardhat-junit-report
-          path: TRUDE/reports/*hardhat*-junit.xml
+          path: reports/*hardhat*-junit.xml
 
       - name: Run Truffle tests (full)
         if: ${{ inputs.suite == 'full' }}
         run: npm run truffle:test:junit
-        working-directory: TRUDE
 
       - name: Run Truffle tests (smoke)
         if: ${{ inputs.suite == 'smoke' }}
         run: npm run truffle:test:smoke:junit
-        working-directory: TRUDE
 
       - name: Upload Truffle JUnit artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: truffle-junit-report
-          path: TRUDE/reports/*truffle*-junit.xml,TRUDE/reports/junit.xml
+          path: reports/*truffle*-junit.xml,reports/junit.xml

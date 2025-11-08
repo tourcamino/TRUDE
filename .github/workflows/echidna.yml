@@ -18,7 +18,7 @@ jobs:
             -v "$PWD":/src \
             -w /src \
             trailofbits/eth-security-toolbox:latest \
-            bash -lc "echidna-test TRUDE/contracts/echidna/EchidnaAffiliateProperties.sol --contract EchidnaAffiliateProperties --format text --test-limit 5000"
+            bash -lc "echidna-test contracts/echidna/EchidnaAffiliateProperties.sol --contract EchidnaAffiliateProperties --format text --test-limit 5000"
 
       - name: Upload Echidna output
         if: always()

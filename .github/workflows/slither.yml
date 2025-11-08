@@ -68,16 +68,13 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies (TRUDE)
-        working-directory: TRUDE
+      - name: Install dependencies
         run: npm ci
 
-      - name: Prepare TRUDE reports directory
-        working-directory: TRUDE
+      - name: Prepare reports directory (TRUDE)
         run: mkdir -p reports
 
       - name: Run Truffle tests (JUnit)
-        working-directory: TRUDE
         run: npm run truffle:test:junit || true
 
       - name: Upload Truffle JUnit artifact
@@ -85,4 +82,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: truffle-junit
-          path: TRUDE/reports/junit.xml
+          path: reports/junit.xml
