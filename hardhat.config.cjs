@@ -33,10 +33,20 @@ const config = {
     localhost: {
       url: "http://127.0.0.1:8545",
     },
+    sepolia: {
+      url: process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org",
+      chainId: 11155111,
+      accounts: process.env.SEPOLIA_PRIVATE_KEY ? [process.env.SEPOLIA_PRIVATE_KEY] : [],
+    },
     op_sepolia: {
       url: process.env.OP_SEPOLIA_RPC_URL || "https://sepolia.optimism.io",
       chainId: 11155420,
       accounts: process.env.OP_SEPOLIA_PRIVATE_KEY ? [process.env.OP_SEPOLIA_PRIVATE_KEY] : [],
+    },
+    base_sepolia: {
+      url: process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org",
+      chainId: 84532,
+      accounts: process.env.BASE_SEPOLIA_PRIVATE_KEY ? [process.env.BASE_SEPOLIA_PRIVATE_KEY] : [],
     },
   },
   mocha: {
@@ -66,9 +76,13 @@ config.gasReporter = {
   // token left default (ETH); OP-specific pricing may require custom gasPriceApi
 };
 
-// Etherscan verification (Optimism Sepolia custom chain)
+// Etherscan verification (standard + custom chains)
 config.etherscan = {
-  apiKey: process.env.OP_SEPOLIA_ETHERSCAN_API_KEY || process.env.ETHERSCAN_API_KEY || "",
+  apiKey: {
+    sepolia: process.env.SEPOLIA_ETHERSCAN_API_KEY || process.env.ETHERSCAN_API_KEY || "",
+    op_sepolia: process.env.OP_SEPOLIA_ETHERSCAN_API_KEY || "",
+    base_sepolia: process.env.BASESCAN_API_KEY || process.env.BASE_SEPOLIA_ETHERSCAN_API_KEY || "",
+  },
   customChains: [
     {
       network: "op_sepolia",
@@ -76,6 +90,14 @@ config.etherscan = {
       urls: {
         apiURL: "https://api-sepolia-optimism.etherscan.io/api",
         browserURL: "https://sepolia-optimism.etherscan.io",
+      },
+    },
+    {
+      network: "base_sepolia",
+      chainId: 84532,
+      urls: {
+        apiURL: "https://api-sepolia.basescan.org/api",
+        browserURL: "https://sepolia.basescan.org",
       },
     },
   ],

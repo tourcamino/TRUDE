@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Mocha Tests" time="7.760" tests="1" failures="0">
+  <testsuite name="Root Suite" timestamp="2025-11-08T17:21:54" tests="0" time="0.000" failures="0">
+  </testsuite>
+  <testsuite name="Smoke: deploys and creates vault" timestamp="2025-11-08T17:21:54" tests="1" file="C:\Users\filip\OneDrive\Desktop\TRUDEx\TRUDE\test\smoke.test.cjs" time="7.756" failures="0">
+    <testcase name="Smoke: deploys and creates vault deploys USDCMock and Factory, creates a Vault" time="7.748" classname="deploys USDCMock and Factory, creates a Vault">
+    </testcase>
+  </testsuite>
+</testsuites>
