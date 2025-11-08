@@ -1,0 +1,42 @@
+name: Gas Check
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gas:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: TRUDE
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Gas Report and Check
+        env:
+          GAS_REPORT: '1'
+          GAS_REPORT_FILE: 'reports/gas-report.txt'
+        run: pnpm run gas:check
+
+      - name: Upload gas report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gas-report
+          path: TRUDE/reports/gas-report.txt

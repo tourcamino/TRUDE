@@ -1,0 +1,88 @@
+name: Slither CI
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  slither:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Restore solc cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.solc-select
+            ~/.cache/solc
+          key: ${{ runner.os }}-solc-0.8.25
+          restore-keys: |
+            ${{ runner.os }}-solc-
+
+      - name: Install Slither and solc-select
+        run: |
+          python -m pip install --upgrade pip
+          pip install slither-analyzer solc-select
+          solc-select install 0.8.25
+          solc-select use 0.8.25
+
+      - name: Prepare reports directory
+        run: mkdir -p reports
+
+      - name: Run Slither with mandatory detectors
+        run: |
+          slither . \
+            --config-file slither.config.json \
+            --detect reentrancy,unchecked-transfer,unprotected-upgrade,tainted-storage,incorrect-equality,shadowing-state \
+            --json reports/slither-ci.json || true
+
+      - name: Verify Slither report (fail on findings)
+        env:
+          SLITHER_MIN_SEVERITY: medium
+        run: |
+          node scripts/slither-ci-check.js reports/slither-ci.json
+
+      - name: Upload Slither report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slither-report
+          path: reports/slither-ci.json
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies (TRUDE)
+        working-directory: TRUDE
+        run: npm ci
+
+      - name: Prepare TRUDE reports directory
+        working-directory: TRUDE
+        run: mkdir -p reports
+
+      - name: Run Truffle tests (JUnit)
+        working-directory: TRUDE
+        run: npm run truffle:test:junit || true
+
+      - name: Upload Truffle JUnit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: truffle-junit
+          path: TRUDE/reports/junit.xml

@@ -1,0 +1,71 @@
+name: Tests (Hardhat & Truffle)
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Seleziona la suite di test"
+        type: choice
+        default: full
+        options:
+          - smoke
+          - full
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: TRUDE
+
+      - name: Prepare reports dir
+        run: mkdir -p reports
+        working-directory: TRUDE
+
+      - name: Run Hardhat tests (full)
+        if: ${{ inputs.suite == 'full' }}
+        run: npm run hh:test:junit
+        working-directory: TRUDE
+
+      - name: Run Hardhat tests (smoke)
+        if: ${{ inputs.suite == 'smoke' }}
+        run: npm run hh:test:smoke:junit
+        working-directory: TRUDE
+
+      - name: Upload Hardhat JUnit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hardhat-junit-report
+          path: TRUDE/reports/*hardhat*-junit.xml
+
+      - name: Run Truffle tests (full)
+        if: ${{ inputs.suite == 'full' }}
+        run: npm run truffle:test:junit
+        working-directory: TRUDE
+
+      - name: Run Truffle tests (smoke)
+        if: ${{ inputs.suite == 'smoke' }}
+        run: npm run truffle:test:smoke:junit
+        working-directory: TRUDE
+
+      - name: Upload Truffle JUnit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: truffle-junit-report
+          path: TRUDE/reports/*truffle*-junit.xml,TRUDE/reports/junit.xml

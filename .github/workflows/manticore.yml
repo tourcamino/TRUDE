@@ -1,0 +1,72 @@
+name: Manticore
+
+on:
+  push:
+    paths:
+      - 'TRUDE/contracts/**'
+      - '.github/workflows/manticore.yml'
+  pull_request:
+    paths:
+      - 'TRUDE/contracts/**'
+      - '.github/workflows/manticore.yml'
+  workflow_dispatch: {}
+
+jobs:
+  manticore:
+    name: Symbolic analysis with Manticore (flattened contracts)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Enable corepack and setup PNPM
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest --activate
+
+      - name: Install dependencies (TRUDE)
+        working-directory: TRUDE
+        run: pnpm install --frozen-lockfile
+
+      - name: Flatten contracts with Hardhat
+        working-directory: TRUDE
+        run: |
+          mkdir -p tmp/manticore
+          pnpm hardhat flatten contracts/TrudeFactory.sol > tmp/manticore/TrudeFactory.flat.sol
+          pnpm hardhat flatten contracts/TrudeVault.sol > tmp/manticore/TrudeVault.flat.sol
+          pnpm hardhat flatten contracts/TrudeAffiliate.sol > tmp/manticore/TrudeAffiliate.flat.sol
+          pnpm hardhat flatten contracts/USDCMock.sol > tmp/manticore/USDCMock.flat.sol
+
+      - name: Pull eth-security-toolbox image (includes Manticore)
+        run: docker pull trailofbits/eth-security-toolbox:latest
+
+      - name: Run Manticore on flattened contracts
+        run: |
+          mkdir -p TRUDE/reports/manticore
+          for f in TRUDE/tmp/manticore/*.sol; do
+            fname=$(basename "$f")
+            # Run with increased stack size per Manticore docs
+            docker run --rm \
+              --ulimit stack=100000000:100000000 \
+              -v "${{ github.workspace }}/TRUDE/tmp/manticore:/share" \
+              -v "${{ github.workspace }}/TRUDE/reports/manticore:/work" \
+              trailofbits/eth-security-toolbox:latest \
+              bash -lc "cd /work && manticore /share/${fname} || true"
+          done
+
+      - name: List generated Manticore outputs
+        run: |
+          echo "Manticore outputs:" && ls -la TRUDE/reports/manticore || true
+
+      - name: Upload Manticore reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: manticore-report
+          path: TRUDE/reports/manticore
+          if-no-files-found: warn

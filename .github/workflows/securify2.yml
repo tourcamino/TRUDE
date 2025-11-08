@@ -1,0 +1,69 @@
+name: Securify2
+
+on:
+  push:
+    paths:
+      - 'TRUDE/contracts/**'
+      - '.github/workflows/securify2.yml'
+  pull_request:
+    paths:
+      - 'TRUDE/contracts/**'
+      - '.github/workflows/securify2.yml'
+  workflow_dispatch: {}
+
+jobs:
+  securify2:
+    name: Run Securify2 analysis on flattened contracts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Enable corepack and setup PNPM
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest --activate
+
+      - name: Install dependencies (TRUDE)
+        working-directory: TRUDE
+        run: pnpm install --frozen-lockfile
+
+      - name: Flatten contracts with Hardhat
+        working-directory: TRUDE
+        run: |
+          mkdir -p tmp/flatten
+          pnpm hardhat flatten contracts/TrudeFactory.sol > tmp/flatten/TrudeFactory.flat.sol
+          pnpm hardhat flatten contracts/TrudeVault.sol > tmp/flatten/TrudeVault.flat.sol
+          pnpm hardhat flatten contracts/TrudeAffiliate.sol > tmp/flatten/TrudeAffiliate.flat.sol
+          pnpm hardhat flatten contracts/USDCMock.sol > tmp/flatten/USDCMock.flat.sol
+
+      - name: Clone Securify2
+        run: git clone https://github.com/eth-sri/securify2.git
+
+      - name: Build Securify2 Docker image
+        run: docker build -t securify2 ./securify2
+
+      - name: Run Securify2 on flattened contracts
+        run: |
+          mkdir -p TRUDE/reports/securify2
+          for f in TRUDE/tmp/flatten/*.sol; do
+            fname=$(basename "$f")
+            # Securify2 supports only flat contracts; run per-file and save text output
+            docker run --rm -v "${{ github.workspace }}/TRUDE/tmp/flatten:/share" securify2 "/share/${fname}" | tee "TRUDE/reports/securify2/${fname}.txt"
+          done
+
+      - name: Upload Securify2 reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: securify2-report
+          path: TRUDE/reports/securify2
+          if-no-files-found: warn

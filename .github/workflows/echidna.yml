@@ -1,0 +1,29 @@
+name: Echidna Properties
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  echidna:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Echidna on affiliate/tiering properties
+        run: |
+          docker pull trailofbits/eth-security-toolbox:latest
+          docker run --rm \
+            -v "$PWD":/src \
+            -w /src \
+            trailofbits/eth-security-toolbox:latest \
+            bash -lc "echidna-test TRUDE/contracts/echidna/EchidnaAffiliateProperties.sol --contract EchidnaAffiliateProperties --format text --test-limit 5000"
+
+      - name: Upload Echidna output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: echidna-output
+          path: |
+            echidna.yml
