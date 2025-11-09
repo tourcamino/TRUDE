@@ -84,11 +84,11 @@ jobs:
         with:
           version: 9
 
-      - name: Install dependencies (TRUDE)
+      - name: Install dependencies
         working-directory: TRUDE
         run: pnpm install --frozen-lockfile
 
-      - name: Prepare TRUDE reports directory
+      - name: Prepare reports directory (TRUDE)
         working-directory: TRUDE
         run: mkdir -p reports
 

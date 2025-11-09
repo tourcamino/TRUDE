@@ -1,0 +1,2 @@
+# Placeholder per setup-python (pip cache) in GitHub Actions
+# Non usato nell'installazione, serve solo a evitare errori di matching
