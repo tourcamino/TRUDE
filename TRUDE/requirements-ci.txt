@@ -1,0 +1,6 @@
+# TRUDE/requirements-ci.txt
+# Dependencies needed by CI (used by .github/workflows/slither.yml)
+# Pin versions for reproducibility
+slither-analyzer==0.10.0
+pytest==7.4.0
+# Add any additional tools required by your CI here
