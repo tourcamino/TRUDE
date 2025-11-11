@@ -49,7 +49,7 @@
     "hh:verify:sepolia": "hardhat --config hardhat.config.cjs verify --network sepolia",
     "hh:verify:base-sepolia": "hardhat --config hardhat.config.cjs verify --network base_sepolia",
     "hh:gas": "cross-env GAS_REPORT=1 hardhat --config hardhat.config.cjs test test/smoke.test.cjs",
-    "gas:check": "node -e \"require('fs').mkdirSync('reports',{recursive:true})\" && cross-env GAS_REPORT=1 GAS_REPORT_FILE=reports/gas-report.txt hardhat --config hardhat.config.cjs test test/smoke.test.cjs && node scripts/gas-check.js",
+    "gas:check": "node -e \"require('fs').mkdirSync('reports',{recursive:true})\" && cross-env GAS_REPORT=1 GAS_REPORT_FILE=reports/gas-report.txt hardhat --config hardhat.config.cjs test test/smoke.test.cjs ; node scripts/gas-check.cjs",
     "forge:build": "forge build",
     "forge:test": "forge test -vv"
   },
@@ -72,6 +72,7 @@
     "@trpc/client": "^11.1.2",
     "@trpc/server": "^11.1.2",
     "@trpc/tanstack-react-query": "^11.1.2",
+    "@walletconnect/ethereum-provider": "^2.23.0",
     "ai": "^4.3.19",
     "autoprefixer": "^10.4.20",
     "dotenv": "^16.4.5",
@@ -92,10 +93,10 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "cross-env": "^7.0.3",
     "@eslint/js": "^9.25.1",
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
     "@nomicfoundation/hardhat-ethers": "^3.1.2",
+    "@nomicfoundation/hardhat-verify": "^2.0.3",
     "@openzeppelin/contracts": "^5.4.0",
     "@tanstack/eslint-plugin-router": "^1.115.0",
     "@types/mocha": "^10.0.10",
@@ -104,14 +105,15 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "chai": "^4.5.0",
+    "cross-env": "^7.0.3",
     "eslint": "^9.25.1",
     "eslint-plugin-react": "^7.37.4",
     "ethers": "^6.15.0",
     "ganache": "^7.9.2",
     "globals": "^16.0.0",
     "hardhat": "^2.27.0",
-    "@nomicfoundation/hardhat-verify": "^2.0.3",
     "hardhat-gas-reporter": "^1.0.10",
+    "mocha-junit-reporter": "^2.0.2",
     "patch-package": "^8.0.0",
     "prettier": "3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
@@ -121,9 +123,9 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.31.1",
-    "vite-tsconfig-paths": "^5.1.4",
-    "mocha-junit-reporter": "^2.0.2"
+    "vite-tsconfig-paths": "^5.1.4"
   },
   "private": true,
-  "type": "module"
+  "type": "module",
+  "packageManager": "pnpm@10.0.0"
 }
