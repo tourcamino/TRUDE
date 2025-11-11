@@ -25,41 +25,55 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: npm
+          node-version: '20.x'
+          cache: 'pnpm'
+          cache-dependency-path: TRUDE/pnpm-lock.yaml
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: Install dependencies
-        run: npm ci
+        working-directory: TRUDE
+        run: pnpm install --frozen-lockfile
 
       - name: Prepare reports dir
+        working-directory: TRUDE
         run: mkdir -p reports
 
       - name: Run Hardhat tests (full)
         if: ${{ inputs.suite == 'full' }}
-        run: npm run hh:test:junit
+        working-directory: TRUDE
+        run: pnpm run hh:test:junit
 
       - name: Run Hardhat tests (smoke)
         if: ${{ inputs.suite == 'smoke' }}
-        run: npm run hh:test:smoke:junit
+        working-directory: TRUDE
+        run: pnpm run hh:test:smoke:junit
 
       - name: Upload Hardhat JUnit artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: hardhat-junit-report
-          path: reports/*hardhat*-junit.xml
+          path: TRUDE/reports/*hardhat*-junit.xml
 
       - name: Run Truffle tests (full)
         if: ${{ inputs.suite == 'full' }}
-        run: npm run truffle:test:junit
+        working-directory: TRUDE
+        run: pnpm run truffle:test:junit
 
       - name: Run Truffle tests (smoke)
         if: ${{ inputs.suite == 'smoke' }}
-        run: npm run truffle:test:smoke:junit
+        working-directory: TRUDE
+        run: pnpm run truffle:test:smoke:junit
 
       - name: Upload Truffle JUnit artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: truffle-junit-report
-          path: reports/*truffle*-junit.xml,reports/junit.xml
+          path: |
+            TRUDE/reports/*truffle*-junit.xml
+            TRUDE/reports/junit.xml

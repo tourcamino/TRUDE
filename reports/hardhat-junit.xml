@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Mocha Tests" time="1.684" tests="1" failures="0">
+  <testsuite name="Root Suite" timestamp="2025-11-09T10:16:38" tests="0" time="0.000" failures="0">
+  </testsuite>
+  <testsuite name="TRUDE: Factory &amp; Vault" timestamp="2025-11-09T10:16:38" tests="1" file="C:\Users\filip\OneDrive\Desktop\TRUDEx\TRUDE\test\TrudeVault.test.ts" time="1.677" failures="0">
+    <testcase name="TRUDE: Factory &amp; Vault deploys contracts, allows deposit/pause flows, and forwards profit registration" time="1.674" classname="deploys contracts, allows deposit/pause flows, and forwards profit registration">
+    </testcase>
+  </testsuite>
+</testsuites>

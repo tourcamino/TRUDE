@@ -197,7 +197,7 @@
       ]
     },
     "C:\\Users\\filip\\OneDrive\\Desktop\\TRUDEx\\TRUDE\\contracts\\TrudeFactory.sol": {
-      "lastModificationDate": 1762621840468,
+      "lastModificationDate": 1762690646234,
       "contentHash": "aaf0560dd562552986efca7cc77e2d8e",
       "sourceName": "contracts/TrudeFactory.sol",
       "solcConfig": {
@@ -242,8 +242,8 @@
       ]
     },
     "C:\\Users\\filip\\OneDrive\\Desktop\\TRUDEx\\TRUDE\\contracts\\TrudeVault.sol": {
-      "lastModificationDate": 1762621840474,
-      "contentHash": "5f296440722993dcd93b21bfbfc1f926",
+      "lastModificationDate": 1762694201682,
+      "contentHash": "9c4e7c6d4f8553c7b3136681a0338c1a",
       "sourceName": "contracts/TrudeVault.sol",
       "solcConfig": {
         "version": "0.8.25",
@@ -1024,7 +1024,7 @@
       ]
     },
     "C:\\Users\\filip\\OneDrive\\Desktop\\TRUDEx\\TRUDE\\contracts\\echidna\\EchidnaAffiliateProperties.sol": {
-      "lastModificationDate": 1762621840456,
+      "lastModificationDate": 1762690646298,
       "contentHash": "2233f09e12c4b3662da0b06b85916dd4",
       "sourceName": "contracts/echidna/EchidnaAffiliateProperties.sol",
       "solcConfig": {

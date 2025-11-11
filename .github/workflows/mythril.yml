@@ -17,7 +17,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: Restore solc cache
         uses: actions/cache@v4
@@ -37,9 +36,11 @@ jobs:
           solc-select use 0.8.25
 
       - name: Prepare reports directory
+        working-directory: TRUDE
         run: mkdir -p reports
 
       - name: Run Mythril analysis on contracts
+        working-directory: TRUDE
         run: |
           myth analyze contracts/*.sol -o jsonv2 > reports/mythril.json || true
 
@@ -48,4 +49,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mythril-report
-          path: reports/mythril.json
+          path: TRUDE/reports/mythril.json

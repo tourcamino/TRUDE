@@ -52,6 +52,12 @@ contract TrudeVault is
      */
     event Withdraw(address indexed user, uint256 amount, uint256 fee);
     /**
+     * @notice Emitted when a user withdraws capital (principal) from the vault
+     * @param user The withdrawing user
+     * @param amount The principal amount returned to the user
+     */
+    event CapitalWithdraw(address indexed user, uint256 amount, uint256 fee);
+    /**
      * @notice Emitted when TVL is updated
      * @param previousTVL The previous total value locked
      * @param newTVL The new total value locked
@@ -145,6 +151,39 @@ contract TrudeVault is
         emit TVLUpdated(prev, totalValueLocked);
     }
 
+    /**
+     * @notice Withdraws previously deposited capital (principal) with a 0.1% fee
+     * @dev Always available, even when the vault is paused; non-reentrant
+     * @param amount The amount of principal to withdraw
+     */
+    function withdrawCapital(uint256 amount) external nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+        uint256 bal = balances[msg.sender];
+        if (bal < amount) revert InsufficientBalance();
+
+        // Effects before interactions
+        balances[msg.sender] = bal - amount;
+
+        // Calculate fee: 0.1% (10 bps) of withdrawn capital
+        uint256 fee = (amount * 10) / 10000;
+        uint256 payout = amount - fee;
+
+        // Transfer fee to owner and payout to user
+        IERC20 t = IERC20(token);
+        address ownerAddr = owner();
+        if (fee > 0) {
+            t.safeTransfer(ownerAddr, fee);
+        }
+        t.safeTransfer(msg.sender, payout);
+
+        // Update TVL to reflect capital leaving the vault
+        uint256 prev = totalValueLocked;
+        totalValueLocked = prev - amount;
+
+        emit CapitalWithdraw(msg.sender, amount, fee);
+        emit TVLUpdated(prev, totalValueLocked);
+    }
+
     function _calculateDynamicFee(uint256 profit, TrudeFactory f)
         internal
         view
@@ -202,4 +241,5 @@ contract TrudeVault is
     error BelowMin();
     error NoProfit();
     error NotAuthorized();
+    error InsufficientBalance();
 }

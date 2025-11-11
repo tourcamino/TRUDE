@@ -2,6 +2,8 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
+import { env } from "~/server/env";
+import { buildWithdrawProfitCalldata } from "~/server/utils/onchain";
 
 export const withdrawProfit = baseProcedure
   .input(
@@ -43,15 +45,31 @@ export const withdrawProfit = baseProcedure
       });
     }
 
-    // Mark as withdrawn
-    const updatedProfit = await db.profit.update({
-      where: { id: input.profitId },
-      data: { withdrawn: true },
+    // Customer flow: allow profit withdrawal anytime; client pays gas on-chain.
+
+    // Log request audit (optional)
+    await db.auditLog.create({
+      data: {
+        action: "REQUEST_WITHDRAW_PROFIT",
+        status: "PENDING",
+        userId: profit.user.id,
+        vaultId: profit.vault.id,
+        details: { profitId: profit.id, amount: profit.amount, userAddress: input.userAddress },
+      },
     });
 
-    return { 
-      success: true, 
-      profit: updatedProfit,
-      amount: profit.amount,
+    // Return prepared transaction for client-side broadcast (gas paid by client)
+    const chainId = env.CHAIN_ID ? Number(env.CHAIN_ID) : undefined;
+    const preparedTx = {
+      to: profit.vault.address,
+      data: buildWithdrawProfitCalldata(BigInt(profit.amount)),
+      value: "0x0",
+      chainId,
+    } as const;
+
+    return {
+      success: true,
+      profit: { id: profit.id, amount: profit.amount, withdrawn: false },
+      preparedTx,
     };
   });

@@ -1,10 +1,9 @@
 import { env } from "~/server/env";
+import { PrismaClient } from "@prisma/client";
 
 const createPrismaClient = () => {
-  const PrismaClient = require("@prisma/client").PrismaClient as any;
   return new PrismaClient({
-    log:
-      env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+    log: env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
   });
 };
 

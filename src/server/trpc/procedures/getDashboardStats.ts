@@ -40,7 +40,7 @@ export const getDashboardStats = baseProcedure.query(async () => {
         address: v.address,
         tokenSymbol: v.tokenSymbol,
         tvl: v.totalValueLocked,
-        createdAt: v.createdAt,
+        createdAt: v.createdAt.toISOString(),
       })),
     };
   } catch (err) {

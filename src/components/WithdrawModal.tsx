@@ -1,10 +1,12 @@
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import { X, ArrowUpCircle, TrendingUp, Clock } from "lucide-react";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useTRPC } from "~/trpc/react";
 import { useWalletStore } from "~/stores/walletStore";
 import toast from "react-hot-toast";
+import { sendPreparedTx } from "~/utils/sendPreparedTx";
+import { formatTokenAmount, formatUSDValue, tokenAmountToNumber } from "~/utils/currency";
 
 interface WithdrawModalProps {
   isOpen: boolean;
@@ -25,32 +27,52 @@ export function WithdrawModal({ isOpen, onClose, profits }: WithdrawModalProps) 
   const [selectedProfitId, setSelectedProfitId] = useState<number | null>(null);
 
   const withdrawMutation = useMutation(
-    trpc.withdrawProfit.mutationOptions({
+    trpc.withdrawProfit.mutationOptions()
+  );
+
+  const finalizeMutation = useMutation(
+    trpc.finalizeProfitWithdrawal.mutationOptions({
       onSuccess: () => {
         toast.success("Profit withdrawn successfully!");
         queryClient.invalidateQueries({ queryKey: trpc.getUserDashboard.queryKey() });
         setSelectedProfitId(null);
       },
       onError: (error) => {
-        toast.error(error.message || "Failed to withdraw profit");
+        toast.error(error.message || "Failed to finalize profit withdrawal");
       },
     })
   );
 
-  const handleWithdraw = (profitId: number) => {
+  const handleWithdraw = async (profitId: number) => {
     if (!address) {
       toast.error("Please connect your wallet");
       return;
     }
     setSelectedProfitId(profitId);
-    withdrawMutation.mutate({ userAddress: address, profitId });
+    try {
+      const { preparedTx } = await withdrawMutation.mutateAsync({ userAddress: address, profitId });
+      const txHash = await sendPreparedTx(preparedTx);
+      await finalizeMutation.mutateAsync({ userAddress: address, profitId, txHash });
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Failed to send transaction");
+    }
   };
 
-  const formatTokenAmount = (amount: string, decimals: number = 6) => {
-    const divisor = BigInt(10 ** decimals);
-    const value = Number(BigInt(amount) / divisor);
-    return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
+  const inferTokenDecimals = (symbol?: string) => {
+    const s = (symbol || "").toUpperCase();
+    if (s.includes("USDC") || s.includes("USDT") || s.includes("BUSD")) return 6;
+    if (s.includes("DAI")) return 18;
+    return 18;
   };
+
+  const tokenPricesQuery = useQuery(
+    trpc.getTokenPrices.queryOptions(
+      { symbols: profits.map((p) => p.vaultSymbol) },
+      { enabled: profits.length > 0 }
+    )
+  );
+  const prices: Record<string, number> = tokenPricesQuery.data?.prices || {};
 
   const availableProfits = profits.filter(p => !p.withdrawn);
 
@@ -110,16 +132,24 @@ export function WithdrawModal({ isOpen, onClose, profits }: WithdrawModalProps) 
                           </p>
                         </div>
                       </div>
-                      <p className="text-lg font-semibold text-green-600">
-                        ${formatTokenAmount(profit.amount)}
-                      </p>
+                      {(() => {
+                        const dec = inferTokenDecimals(profit.vaultSymbol);
+                        const tokens = tokenAmountToNumber(profit.amount, dec);
+                        const sym = profit.vaultSymbol || "";
+                        const isStable = /^(USDC|USDT|BUSD|DAI)$/i.test(sym);
+                        const price = prices[sym] ?? (isStable ? 1 : undefined);
+                        const content = price
+                          ? `$${formatUSDValue(tokens * price)}`
+                          : `${formatTokenAmount(profit.amount, dec)} ${profit.vaultSymbol}`;
+                        return <p className="text-lg font-semibold text-green-600">{content}</p>;
+                      })()}
                     </div>
                     <button
                       onClick={() => handleWithdraw(profit.id)}
-                      disabled={withdrawMutation.isPending && selectedProfitId === profit.id}
+                      disabled={(withdrawMutation.isPending || finalizeMutation.isPending) && selectedProfitId === profit.id}
                       className="rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:shadow-lg disabled:opacity-50"
                     >
-                      {withdrawMutation.isPending && selectedProfitId === profit.id
+                      {(withdrawMutation.isPending || finalizeMutation.isPending) && selectedProfitId === profit.id
                         ? "Processing..."
                         : "Withdraw"}
                     </button>

@@ -213,27 +213,167 @@ function DevelopersPage() {
             </div>
 
             {/* Withdraw Example */}
+              <div className="rounded-2xl bg-white p-6 shadow-lg">
+                <div className="mb-4 flex items-center space-x-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-emerald-600">
+                    <Terminal className="h-5 w-5 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900">Withdraw Profits</h3>
+                </div>
+                <div className="rounded-xl bg-gray-900 p-4">
+                  <pre className="overflow-x-auto text-sm text-gray-100">
+                  <code>{`POST /api/trpc/withdrawProfit
+
+// Response (excerpt)
+{
+  "success": true,
+  "profit": { "id": 42, "amount": "2500000", "withdrawn": false },
+  "preparedTx": {
+    "to": "0xVault...",
+    "data": "0xabcdef...",
+    "value": "0x0",
+    "chainId": 31337
+  }
+}
+
+// Client-side broadcast (e.g., MetaMask)
+ethereum.request({ method: 'eth_sendTransaction', params: [{
+  to: preparedTx.to,
+  data: preparedTx.data,
+  value: preparedTx.value
+}] })
+
+// Finalizzazione lato server
+POST /api/trpc/finalizeProfitWithdrawal
+{
+  "userAddress": "0x123...",
+  "profitId": 42,
+  "txHash": "0x..."
+}`}</code>
+                  </pre>
+              </div>
+              <p className="mt-4 text-sm text-gray-600">
+                Profit withdrawal returns a <span className="font-semibold">prepared transaction</span> to be sent with the user's wallet. 
+                Gas costs are always paid by the customer and the application <span className="font-semibold">does not broadcast</span> transactions on-chain. 
+                After on-chain confirmation, call <code>finalizeProfitWithdrawal</code> with the transaction hash to update status and TVL.
+              </p>
+              </div>
+
+              {/* Register Service Delegation */}
+              <div className="rounded-2xl bg-white p-6 shadow-lg">
+                <div className="mb-4 flex items-center space-x-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
+                    <Terminal className="h-5 w-5 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900">Register Service Delegation</h3>
+                </div>
+                <div className="rounded-xl bg-gray-900 p-4">
+                  <pre className="overflow-x-auto text-sm text-gray-100">
+                    <code>{`POST /api/trpc/registerServiceDelegation
+
+{
+  "adminToken": "admin123",
+  "userAddress": "0xUSER...",
+  "delegatedSigner": "0xDELEGATE...",
+  "status": "ACTIVE",
+  "policy": {
+    "allowlist": ["0xVAULT_ADDRESS..."],
+    "maxPerTx": "1000000000", // in smallest unit
+    "dailyLimit": "5000000000", // in smallest unit
+    "custodial": false
+  }
+}`}</code>
+                  </pre>
+                </div>
+                <p className="mt-4 text-sm text-gray-600">
+                  Create or update a service delegation for a user to enable auto withdrawal flows with policy checks.
+                  Use reasonable limits and include the vault address in the allowlist if you want to restrict withdrawals to specific vaults.
+                </p>
+              </div>
+
+            {/* Withdraw Capital */}
             <div className="rounded-2xl bg-white p-6 shadow-lg">
               <div className="mb-4 flex items-center space-x-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-emerald-600">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600">
                   <Terminal className="h-5 w-5 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Withdraw Profits</h3>
+                <h3 className="text-xl font-bold text-gray-900">Withdraw Capital</h3>
               </div>
               <div className="rounded-xl bg-gray-900 p-4">
                 <pre className="overflow-x-auto text-sm text-gray-100">
-                  <code>{`POST /api/trpc/withdrawProfit
+                  <code>{`POST /api/trpc/withdrawCapital
 
 {
   "userAddress": "0x123...",
-  "profitId": 42
+  "vaultId": 1,
+  "amount": "1000000"
 }`}</code>
                 </pre>
               </div>
               <p className="mt-4 text-sm text-gray-600">
-                Withdraw profits by providing the user's address and the profit ID. 
-                The system will mark the profit as withdrawn and update balances accordingly.
+                Withdraw principal (deposit capital) at any time. A fee of 0.1% is applied to the withdrawn capital and sent to the vault owner. The amount is
+                specified in the token's smallest unit. Available principal is validated against
+                total deposits minus prior capital withdrawals.
               </p>
+            </div>
+
+            {/* Request Withdraw Capital (Prepared Tx) */}
+            <div className="rounded-2xl bg-white p-6 shadow-lg">
+              <div className="mb-4 flex items-center space-x-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600">
+                  <Terminal className="h-5 w-5 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Request Withdraw Capital (Prepared Tx)</h3>
+              </div>
+              <div className="rounded-xl bg-gray-900 p-4">
+                <pre className="overflow-x-auto text-sm text-gray-100">
+                  <code>{`POST /api/trpc/requestWithdrawCapital
+
+// mode: "auto" (policy enforced, no auto broadcast)
+{
+  "mode": "auto",
+  "userAddress": "0x123...",
+  "vaultId": 1,
+  "amount": "1000000",
+  "executeNow": true // returns preparedTx for wallet broadcast
+}
+
+// mode: "eip712" (off-chain signature verified; client-side on-chain execution)
+{
+  "mode": "eip712",
+  "userAddress": "0x123...",
+  "vaultId": 1,
+  "amount": "1000000",
+  "signature": "0x...",
+  "nonce": "0x...",
+  "deadline": 1731000000
+}
+
+// Response (excerpt)
+{
+  "success": true,
+  "request": { "id": 42, "status": "PENDING", "mode": "auto" },
+  "preparedTx": {
+    "to": "0xVault...",
+    "data": "0xabcdef...",
+    "value": "0x0",
+    "chainId": 31337
+  }
+}`}</code>
+                </pre>
+              </div>
+              <p className="mt-4 text-sm text-gray-600">
+                This endpoint creates a withdrawal request and returns a <code>preparedTx</code> to be sent with the user's wallet (e.g., MetaMask). 
+                Gas costs are always paid by the customer: the app does not broadcast or pay for on-chain transactions.
+                In <span className="font-semibold">auto</span> mode, delegation policies are enforced (allowlist, per‑tx and daily limits), but execution occurs only client‑side. 
+                In <span className="font-semibold">EIP‑712</span> mode, the signature is verified off‑chain and the request remains `PENDING` until client‑side execution.
+              </p>
+              <div className="mt-3 rounded-lg bg-indigo-50 p-3 text-xs text-indigo-900">
+                <p>
+                  Sending with MetaMask: use <code>{String.raw`ethereum.request({ method: 'eth_sendTransaction', params: [{ to, data, value }] })`}</code> with <code>preparedTx</code> values.
+                  Ensure the correct network (`chainId`) and sufficient funds for gas.
+                </p>
+              </div>
             </div>
 
             {/* Query Vaults */}
@@ -285,15 +425,124 @@ Response:
 {
   "totalDeposited": "50000000",
   "totalProfits": "2500000",
+  "availablePrincipal": "48000000",
+  "totalWithdrawnCapital": "2000000",
   "deposits": [...],
-  "profits": [...]
+  "profits": [...],
+  "withdrawals": [...]
 }`}</code>
-                </pre>
+              </pre>
               </div>
               <p className="mt-4 text-sm text-gray-600">
-                Get comprehensive dashboard data for a user including deposits, profits, and performance metrics. 
+                Get comprehensive dashboard data for a user including deposits, capital withdrawals, profits, and performance metrics. 
                 All amounts are denominated in stablecoin smallest units.
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Wallet Support */}
+        <div className="mb-16">
+          <div className="mb-8 text-center">
+            <h2 className="text-3xl font-bold text-gray-900">Wallet Support</h2>
+              <p className="mt-2 text-gray-600">MetaMask, Rabby, Coinbase Extension via EIP‑1193; WalletConnect mobile available</p>
+          </div>
+
+          <div className="grid gap-8 md:grid-cols-2">
+            <div className="rounded-2xl bg-white p-6 shadow-lg">
+              <div className="mb-4 flex items-center space-x-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600">
+                  <Network className="h-5 w-5 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">EIP‑1193 Adapter (Browser Wallets)</h3>
+              </div>
+              <p className="text-sm text-gray-600">
+                The app uses an <span className="font-semibold">EIP‑1193 adapter</span> to interface with any compliant wallet (MetaMask, Rabby, Coinbase Extension, Brave).
+                Prepared transactions (<code>preparedTx</code>) are sent via <code>eth_sendTransaction</code> with no wallet‑specific branches.
+              </p>
+              <div className="mt-3 rounded-xl bg-gray-900 p-4">
+                <pre className="overflow-x-auto text-sm text-gray-100">
+                  <code>{`import { sendPreparedTx } from "~/utils/sendPreparedTx";
+
+// Any EIP-1193 provider (default: window.ethereum)
+const txHash = await sendPreparedTx(preparedTx);
+`}</code>
+                </pre>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-white p-6 shadow-lg">
+              <div className="mb-4 flex items-center space-x-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600">
+                  <Wallet className="h-5 w-5 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">WalletConnect (Mobile)</h3>
+              </div>
+              <p className="text-sm text-gray-600">
+                <span className="font-semibold">WalletConnect v2</span> support is now available. The architecture uses <span className="font-semibold">prepared transactions</span> and client‑side broadcast.
+                Requires <code>@walletconnect/ethereum-provider</code> installed and <code>VITE_WALLETCONNECT_PROJECT_ID</code> configured in your environment.
+                The WalletConnect provider exposes an EIP‑1193 interface and uses the same flow.
+              </p>
+              <div className="mt-3 rounded-xl bg-gray-900 p-4">
+                <pre className="overflow-x-auto text-sm text-gray-100">
+                  <code>{`import { createWalletConnectProvider } from "~/utils/wallet/walletConnect";
+import { sendPreparedTx } from "~/utils/sendPreparedTx";
+
+// Initialize WalletConnect provider (requires @walletconnect/ethereum-provider)
+const wcProvider = await createWalletConnectProvider({
+  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID,
+  metadata: {
+    name: "TRUDE",
+    url: window.location.origin,
+    icons: ["https://trude.example/icon.png"],
+  },
+});
+
+// Then send the prepared transaction via WalletConnect
+await sendPreparedTx(preparedTx, wcProvider);
+`}</code>
+                </pre>
+              </div>
+              <div className="mt-3 rounded-lg bg-indigo-50 p-3 text-xs text-indigo-900">
+                Configuration: install <code>@walletconnect/ethereum-provider</code>, set <code>VITE_WALLETCONNECT_PROJECT_ID</code>, then pass the provider to <code>sendPreparedTx(preparedTx, provider)</code>.
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-white p-6 shadow-lg md:col-span-2">
+              <div className="mb-4 flex items-center space-x-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-600">
+                  <Lock className="h-5 w-5 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Custodial / Enterprise (EIP‑712)</h3>
+              </div>
+              <p className="text-sm text-gray-600">
+                For custodial/enterprise wallets, use <span className="font-semibold">EIP‑712</span> with off‑chain signing and client/provider broadcast.
+                The helper <code>~/utils/eip712.ts</code> builds the <code>WithdrawalAuthorization</code> typed data for signing and verification.
+              </p>
+              <div className="mt-3 rounded-xl bg-gray-900 p-4">
+                <pre className="overflow-x-auto text-sm text-gray-100">
+                  <code>{`import { buildWithdrawalAuthorizationTypedData } from "~/utils/eip712";
+
+const typedData = buildWithdrawalAuthorizationTypedData({
+  chainId: 31337,
+  verifyingContract: "0xFactoryOrVerifier...",
+  data: {
+    user: "0x123...",
+    vaultId: 1,
+    amount: "1000000",
+    nonce: "0x...",
+    deadline: 1731000000,
+  },
+});
+// provider.request({ method: 'eth_signTypedData_v4', params: [user, JSON.stringify(typedData)] })
+`}</code>
+                </pre>
+              </div>
+              <div className="mt-3 rounded-lg bg-purple-50 p-3 text-xs text-purple-900">
+                Recommended mode: <span className="font-semibold">Auto “preparation‑only”</span> — the endpoint validates <span className="font-semibold">policies</span> and returns <code>preparedTx</code>.
+                The integrator broadcasts with their wallet/infra, preserving <span className="font-semibold">gas paid by customer/integrator</span>.
+                Policies are <span className="font-semibold">upgradable</span> and enforce allowlist, per‑tx/daily limits, and custodial flag.
+              </div>
             </div>
           </div>
         </div>

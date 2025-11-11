@@ -2,15 +2,15 @@
 
 Badge CI e artifact per i workflow:
 
-- Test (Hardhat & Truffle): [![Tests](https://github.com/OWNER/REPO/actions/workflows/tests.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/tests.yml)
-- Slither: [![Slither](https://github.com/OWNER/REPO/actions/workflows/slither.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/slither.yml)
-- Mythril: [![Mythril](https://github.com/OWNER/REPO/actions/workflows/mythril.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/mythril.yml)
-- Diligence Fuzzing: [![Diligence Fuzzing](https://github.com/OWNER/REPO/actions/workflows/diligence-fuzzing.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/diligence-fuzzing.yml)
-- Echidna: [![Echidna](https://github.com/OWNER/REPO/actions/workflows/echidna.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/echidna.yml)
-- Manticore: [![Manticore](https://github.com/OWNER/REPO/actions/workflows/manticore.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/manticore.yml)
- - Pre-Deploy Gate (OP Sepolia): [![Pre-Deploy](https://github.com/OWNER/REPO/actions/workflows/pre-deploy.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/pre-deploy.yml)
- - Securify2: [![Securify2](https://github.com/OWNER/REPO/actions/workflows/securify2.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/securify2.yml)
- - Gas Check: [![Gas Check](https://github.com/OWNER/REPO/actions/workflows/gas-check.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/gas-check.yml)
+- Test (Hardhat & Truffle): [![Tests](https://github.com/tourcamino/TRUDE/actions/workflows/tests.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/tests.yml)
+- Slither: [![Slither](https://github.com/tourcamino/TRUDE/actions/workflows/slither.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/slither.yml)
+- Mythril: [![Mythril](https://github.com/tourcamino/TRUDE/actions/workflows/mythril.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/mythril.yml)
+- Diligence Fuzzing: [![Diligence Fuzzing](https://github.com/tourcamino/TRUDE/actions/workflows/diligence-fuzzing.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/diligence-fuzzing.yml)
+- Echidna: [![Echidna](https://github.com/tourcamino/TRUDE/actions/workflows/echidna.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/echidna.yml)
+- Manticore: [![Manticore](https://github.com/tourcamino/TRUDE/actions/workflows/manticore.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/manticore.yml)
+ - Pre-Deploy Gate (OP Sepolia): [![Pre-Deploy](https://github.com/tourcamino/TRUDE/actions/workflows/pre-deploy.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/pre-deploy.yml)
+ - Securify2: [![Securify2](https://github.com/tourcamino/TRUDE/actions/workflows/securify2.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/securify2.yml)
+ - Gas Check: [![Gas Check](https://github.com/tourcamino/TRUDE/actions/workflows/gas-check.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/gas-check.yml)
 
 Artifact generati (scaricabili dalla pagina del workflow run):
 
@@ -22,7 +22,7 @@ Artifact generati (scaricabili dalla pagina del workflow run):
  - Manticore: `manticore-report` (directory `mcore_*` per ciascun `.sol` appiattito)
  - Securify2: `securify2-report` (file `.txt` per ciascun `.sol` appiattito)
 
-Note: sostituisci `OWNER/REPO` con l’organizzazione e nome repository GitHub.
+Note: badge aggiornati per `tourcamino/TRUDE`.
 
 ## Suite di test parametrica
 

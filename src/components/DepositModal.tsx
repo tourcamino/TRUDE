@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTRPC } from "~/trpc/react";
 import { useWalletStore } from "~/stores/walletStore";
 import toast from "react-hot-toast";
+import { formatTokenAmount, formatUSDValue } from "~/utils/currency";
 
 interface DepositModalProps {
   isOpen: boolean;
@@ -16,7 +17,10 @@ interface DepositModalProps {
 
 const depositSchema = z.object({
   vaultId: z.number().min(1, "Please select a vault"),
-  amount: z.string().regex(/^\d+$/, "Amount must be a valid number").min(1, "Amount is required"),
+  amountDecimal: z
+    .string()
+    .regex(/^\d+(\.\d{1,18})?$/, "Enter a valid amount (e.g., 10 or 10.5)")
+    .min(1, "Amount is required"),
 });
 
 type DepositForm = z.infer<typeof depositSchema>;
@@ -53,19 +57,38 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
     formState: { errors },
     reset,
     setValue,
+    watch,
   } = useForm<DepositForm>({
     resolver: zodResolver(depositSchema),
   });
+
+  const inferTokenDecimals = (symbol?: string) => {
+    const s = (symbol || "").toUpperCase();
+    if (s.includes("USDC") || s.includes("USDT") || s.includes("BUSD")) return 6;
+    if (s.includes("DAI")) return 18;
+    return 18;
+  };
+
+  const toSmallestUnits = (amountDecimal: string, decimals: number) => {
+    const [intPart, fracPart = ""] = amountDecimal.split(".");
+    const cleanedInt = (intPart || "0").replace(/\D/g, "");
+    const frac = fracPart.padEnd(decimals, "0").slice(0, decimals);
+    const normalized = `${cleanedInt}${frac}`;
+    const trimmed = normalized.replace(/^0+/, "") || "0";
+    return trimmed;
+  };
 
   const onSubmit = (data: DepositForm) => {
     if (!address) {
       toast.error("Please connect your wallet");
       return;
     }
+    const decimals = inferTokenDecimals(selectedVault?.tokenSymbol);
+    const smallest = toSmallestUnits(data.amountDecimal, decimals);
     createDepositMutation.mutate({
       userAddress: address,
       vaultId: data.vaultId,
-      amount: data.amount,
+      amount: smallest,
     });
   };
 
@@ -74,13 +97,16 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
     setValue("vaultId", vaultId);
   };
 
-  const formatTokenAmount = (amount: string, decimals: number = 6) => {
-    const divisor = BigInt(10 ** decimals);
-    const value = Number(BigInt(amount) / divisor);
-    return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
-  };
+  // Use centralized formatter from utils/currency
 
   const availableVaults = vaultsQuery.data?.vaults.filter(v => !v.isPaused) || [];
+  const tokenPricesQuery = useQuery(
+    trpc.getTokenPrices.queryOptions(
+      { symbols: availableVaults.map((v) => v.tokenSymbol) },
+      { enabled: availableVaults.length > 0 }
+    )
+  );
+  const prices: Record<string, number> = tokenPricesQuery.data?.prices || {};
   const selectedVault = availableVaults.find(v => v.id === selectedVaultId);
 
   return (
@@ -159,24 +185,42 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
 
               {/* Amount Input */}
               <div>
-                <label htmlFor="amount" className="mb-1 block text-sm font-medium text-gray-700">
-                  Deposit Amount
+                <label htmlFor="amountDecimal" className="mb-1 block text-sm font-medium text-gray-700">
+                  Deposit Amount ({selectedVault?.tokenSymbol || "Token"})
                 </label>
                 <input
-                  id="amount"
+                  id="amountDecimal"
                   type="text"
-                  placeholder="Enter amount in smallest unit"
-                  {...register("amount")}
+                  placeholder="e.g., 10 or 10.5"
+                  {...register("amountDecimal")}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-                {errors.amount && (
-                  <p className="mt-1 text-sm text-red-600">{errors.amount.message}</p>
+                {errors.amountDecimal && (
+                  <p className="mt-1 text-sm text-red-600">{errors.amountDecimal.message}</p>
                 )}
-                {selectedVault && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    For {selectedVault.tokenSymbol}: Enter amount in smallest unit (e.g., 10 {selectedVault.tokenSymbol} = 10000000 for 6 decimals)
-                  </p>
-                )}
+                {selectedVault && (() => {
+                  const amountDec = watch("amountDecimal") || "";
+                  const decimals = inferTokenDecimals(selectedVault.tokenSymbol);
+                  const smallest = amountDec && /^\d+(\.\d+)?$/.test(amountDec)
+                    ? toSmallestUnits(amountDec, decimals)
+                    : "";
+                  const sym = selectedVault?.tokenSymbol || "";
+                  const isStable = /^(USDC|USDT|BUSD|DAI)$/i.test(sym);
+                  const tokenUsdPrice = prices[sym] ?? (isStable ? 1 : undefined);
+                  const usd = amountDec && !isNaN(Number(amountDec)) && tokenUsdPrice
+                    ? formatUSDValue(Number(amountDec) * tokenUsdPrice)
+                    : "";
+                  return (
+                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className="rounded-lg bg-gray-50 p-2 text-xs text-gray-700">
+                        <span className="font-medium">≈ USD:</span> {usd ? `$${usd}` : "-"}
+                      </div>
+                      <div className="rounded-lg bg-gray-50 p-2 text-xs text-gray-700">
+                        <span className="font-medium">Smallest unit:</span> {smallest || "-"}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Submit Button */}

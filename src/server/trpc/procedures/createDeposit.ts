@@ -34,8 +34,19 @@ export const createDeposit = baseProcedure
       });
     }
 
-    const settings = await db.factorySettings.findFirst();
-    const minDeposit = BigInt(settings?.minDeposit || "1000000000000000000");
+    // Ensure FactorySettings exist; create sane defaults for stablecoins if missing
+    let settings = await db.factorySettings.findFirst();
+    if (!settings) {
+      settings = await db.factorySettings.create({
+        data: {
+          minDeposit: "10000000", // 10 USDC with 6 decimals
+          affiliateShareBps: 5000, // 50%
+          maxFeePercent: 20, // 20%
+          isPaused: false,
+        },
+      });
+    }
+    const minDeposit = BigInt(settings.minDeposit);
     const depositAmount = BigInt(input.amount);
 
     if (depositAmount < minDeposit) {

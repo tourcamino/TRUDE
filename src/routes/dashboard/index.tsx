@@ -9,6 +9,7 @@ import { DepositModal } from "~/components/DepositModal";
 import { WithdrawModal } from "~/components/WithdrawModal";
 import { useTRPC } from "~/trpc/react";
 import { useWalletStore } from "~/stores/walletStore";
+import { formatTokenAmount } from "~/utils/currency";
 import {
   DollarSign,
   TrendingUp,
@@ -38,14 +39,6 @@ function DashboardPage() {
       { enabled: isConnected && !!address }
     )
   );
-
-  // Format token amounts - system is designed for stablecoins (USDC, USDT)
-  // Default to 6 decimals which is standard for most stablecoins
-  const formatTokenAmount = (amount: string, decimals: number = 6) => {
-    const divisor = BigInt(10 ** decimals);
-    const value = Number(BigInt(amount) / divisor);
-    return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
-  };
 
   const formatAmount = (amount: string) => formatTokenAmount(amount, 6);
 
@@ -92,7 +85,7 @@ function DashboardPage() {
         ) : (
           <>
             {/* Quick Actions */}
-            <div className="mb-8 grid gap-4 sm:grid-cols-2">
+            <div className="mb-8 grid gap-4 sm:grid-cols-3">
               <button
                 onClick={() => setIsDepositModalOpen(true)}
                 className="group relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 p-8 shadow-2xl transition-all hover:scale-105 hover:shadow-3xl"
@@ -112,7 +105,7 @@ function DashboardPage() {
 
               <button
                 onClick={() => {
-                  const availableProfits = dashboard?.profits.filter(p => !p.withdrawn) || [];
+                  const availableProfits = dashboard?.profits.filter((p: any) => !p.withdrawn) || [];
                   if (availableProfits.length === 0) {
                     toast.error("No profits available to withdraw");
                   } else {
@@ -138,6 +131,29 @@ function DashboardPage() {
                   </div>
                 </div>
               </button>
+
+              <Link
+                to="/vaults"
+                search={{ filter: "deposited" }}
+                className="group relative overflow-hidden rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 p-8 shadow-2xl transition-all hover:scale-105 hover:shadow-3xl"
+              >
+                <div className="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100"></div>
+                <div className="relative flex items-center justify-between">
+                  <div className="text-left">
+                    <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg:white/20 backdrop-blur-sm">
+                      <ArrowUpCircle className="h-6 w-6 text-white" />
+                    </div>
+                    <h3 className="mb-2 text-2xl font-bold text-white">Withdraw Capital</h3>
+                    <p className="text-teal-100">Withdraw capital from your vault</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-teal-100">Available</p>
+                    <p className="text-xl font-bold text-white">
+                      ${formatAmount(dashboard?.availablePrincipal || "0")}
+                    </p>
+                  </div>
+                </div>
+              </Link>
             </div>
 
             {/* Stats Overview */}
@@ -166,6 +182,18 @@ function DashboardPage() {
                 label="Withdrawn"
                 value={`$${formatAmount(dashboard?.withdrawnProfits || "0")}`}
                 gradient="from-orange-500 to-red-600"
+              />
+              <StatCard
+                icon={DollarSign}
+                label="Available Principal"
+                value={`$${formatAmount(dashboard?.availablePrincipal || "0")}`}
+                gradient="from-cyan-500 to-teal-600"
+              />
+              <StatCard
+                icon={XCircle}
+                label="Capital Withdrawn"
+                value={`$${formatAmount(dashboard?.totalWithdrawnCapital || "0")}`}
+                gradient="from-teal-500 to-cyan-600"
               />
             </div>
 
@@ -208,7 +236,7 @@ function DashboardPage() {
                 </h3>
                 {dashboard && dashboard.deposits.length > 0 ? (
                   <div className="space-y-3">
-                    {dashboard.deposits.slice(0, 5).map((deposit) => (
+                    {dashboard.deposits.slice(0, 5).map((deposit: any) => (
                       <div
                         key={deposit.id}
                         className="flex items-center justify-between rounded-lg border border-gray-100 p-4 transition-all hover:bg-gray-50"
@@ -248,7 +276,7 @@ function DashboardPage() {
                 </h3>
                 {dashboard && dashboard.profits.length > 0 ? (
                   <div className="space-y-3">
-                    {dashboard.profits.slice(0, 5).map((profit) => (
+                    {dashboard.profits.slice(0, 5).map((profit: any) => (
                       <div
                         key={profit.id}
                         className="flex items-center justify-between rounded-lg border border-gray-100 p-4 transition-all hover:bg-gray-50"

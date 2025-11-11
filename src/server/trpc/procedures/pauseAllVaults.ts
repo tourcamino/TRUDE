@@ -4,12 +4,11 @@ import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { env } from "~/server/env";
 
-export const pauseVault = baseProcedure
+export const pauseAllVaults = baseProcedure
   .input(
     z.object({
       adminToken: z.string(),
-      vaultId: z.number(),
-      isPaused: z.boolean(),
+      isPaused: z.boolean().default(true),
     })
   )
   .mutation(async ({ input }) => {
@@ -18,15 +17,6 @@ export const pauseVault = baseProcedure
       throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid admin token" });
     }
 
-    const vault = await db.vault.findUnique({ where: { id: input.vaultId } });
-    if (!vault) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "Vault not found" });
-    }
-
-    const updated = await db.vault.update({
-      where: { id: input.vaultId },
-      data: { isPaused: input.isPaused },
-    });
-
-    return { success: true, vault: updated };
+    const res = await db.vault.updateMany({ data: { isPaused: input.isPaused } });
+    return { success: true, updatedCount: res.count, isPaused: input.isPaused };
   });

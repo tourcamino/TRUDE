@@ -23,6 +23,13 @@ export const getVaultById = baseProcedure
           orderBy: { createdAt: "desc" },
           take: 10,
         },
+        withdrawals: {
+          include: {
+            user: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        },
       },
     });
 

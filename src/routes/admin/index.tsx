@@ -117,6 +117,39 @@ function AdminPage() {
     })
   );
 
+  const deleteAllVaultsMutation = useMutation(
+    trpc.deleteAllVaults.mutationOptions({
+      onSuccess: (res) => {
+        toast.success(`Deleted all vaults (${res.deleted.vaults}) and related records`);
+        queryClient.invalidateQueries({ queryKey: trpc.getVaults.queryKey() });
+        queryClient.invalidateQueries({ queryKey: trpc.getDashboardStats.queryKey() });
+      },
+      onError: (error) => {
+        // Show a friendlier message when TRPC client cannot transform the server response
+        const msg = /transform response/i.test(error.message || "")
+          ? "Unable to transform response from server. Check server logs and ensure router exposes deleteAllVaults."
+          : (error.message || "Failed to delete all vaults");
+        toast.error(msg);
+      },
+    })
+  );
+
+  const pauseAllVaultsMutation = useMutation(
+    trpc.pauseAllVaults.mutationOptions({
+      onSuccess: (res) => {
+        toast.success(`${res.isPaused ? "Paused" : "Unpaused"} all vaults (${res.updatedCount})`);
+        queryClient.invalidateQueries({ queryKey: trpc.getVaults.queryKey() });
+        queryClient.invalidateQueries({ queryKey: trpc.getDashboardStats.queryKey() });
+      },
+      onError: (error) => {
+        const msg = /transform response/i.test(error.message || "")
+          ? "Unable to transform response from server. Check server logs and router registration."
+          : (error.message || "Failed to update vault pause state");
+        toast.error(msg);
+      },
+    })
+  );
+
   // Profits feature removed for compliance
 
   const {
@@ -478,6 +511,42 @@ function AdminPage() {
                 onChange={(e) => setAdminToken(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
+              <div className="mt-3 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!adminToken) { toast.error("Admin token required"); return; }
+                    if (!window.confirm("Delete ALL vaults and related data? This cannot be undone.")) return;
+                    deleteAllVaultsMutation.mutate({ adminToken });
+                  }}
+                  disabled={deleteAllVaultsMutation.isPending}
+                  className="rounded-lg bg-red-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm disabled:opacity-50"
+                >
+                  {deleteAllVaultsMutation.isPending ? "Deleting..." : "Delete All Vaults"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!adminToken) { toast.error("Admin token required"); return; }
+                    pauseAllVaultsMutation.mutate({ adminToken, isPaused: true });
+                  }}
+                  disabled={pauseAllVaultsMutation.isPending}
+                  className="ml-2 rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm disabled:opacity-50"
+                >
+                  {pauseAllVaultsMutation.isPending ? "Pausing..." : "Pause All Vaults"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!adminToken) { toast.error("Admin token required"); return; }
+                    pauseAllVaultsMutation.mutate({ adminToken, isPaused: false });
+                  }}
+                  disabled={pauseAllVaultsMutation.isPending}
+                  className="ml-2 rounded-lg bg-green-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm disabled:opacity-50"
+                >
+                  {pauseAllVaultsMutation.isPending ? "Unpausing..." : "Unpause All Vaults"}
+                </button>
+              </div>
             </div>
             {/* Create Vault Form */}
             <div className="rounded-2xl bg-white p-6 shadow-lg">

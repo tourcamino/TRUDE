@@ -28,6 +28,14 @@ export const getUserDashboard = baseProcedure
             createdAt: "desc",
           },
         },
+        withdrawals: {
+          include: {
+            vault: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
         affiliateRelation: true,
       },
     });
@@ -38,8 +46,11 @@ export const getUserDashboard = baseProcedure
         totalProfits: "0",
         availableProfits: "0",
         withdrawnProfits: "0",
+        availablePrincipal: "0",
+        totalWithdrawnCapital: "0",
         deposits: [],
         profits: [],
+        withdrawals: [],
         hasAffiliate: false,
         performanceData: [],
       };
@@ -63,6 +74,12 @@ export const getUserDashboard = baseProcedure
       }
     }
 
+    let totalWithdrawnCapital = BigInt(0);
+    for (const w of user.withdrawals) {
+      totalWithdrawnCapital += BigInt(w.amount);
+    }
+    const availablePrincipal = totalDeposited - totalWithdrawnCapital;
+
     // Build performance data for graph (combine deposits and profits chronologically)
     const performanceEvents = [
       ...user.deposits.map(d => ({
@@ -70,6 +87,12 @@ export const getUserDashboard = baseProcedure
         type: 'deposit' as const,
         amount: d.amount,
         vaultSymbol: d.vault.tokenSymbol,
+      })),
+      ...user.withdrawals.map(w => ({
+        date: w.createdAt,
+        type: 'withdrawal' as const,
+        amount: w.amount,
+        vaultSymbol: w.vault.tokenSymbol,
       })),
       ...user.profits.map(p => ({
         date: p.createdAt,
@@ -84,6 +107,8 @@ export const getUserDashboard = baseProcedure
     const performanceData = performanceEvents.map(event => {
       if (event.type === 'deposit') {
         cumulativeBalance += BigInt(event.amount);
+      } else if (event.type === 'withdrawal') {
+        cumulativeBalance -= BigInt(event.amount);
       } else {
         cumulativeBalance += BigInt(event.amount);
       }
@@ -100,7 +125,9 @@ export const getUserDashboard = baseProcedure
       totalProfits: totalProfits.toString(),
       availableProfits: availableProfits.toString(),
       withdrawnProfits: withdrawnProfits.toString(),
-      deposits: user.deposits.map(d => ({
+      availablePrincipal: availablePrincipal.toString(),
+      totalWithdrawnCapital: totalWithdrawnCapital.toString(),
+      deposits: user.deposits.map((d: any) => ({
         id: d.id,
         amount: d.amount,
         createdAt: d.createdAt,
@@ -108,7 +135,7 @@ export const getUserDashboard = baseProcedure
         vaultAddress: d.vault.address,
         vaultSymbol: d.vault.tokenSymbol,
       })),
-      profits: user.profits.map(p => ({
+      profits: user.profits.map((p: any) => ({
         id: p.id,
         amount: p.amount,
         withdrawn: p.withdrawn,
@@ -116,6 +143,14 @@ export const getUserDashboard = baseProcedure
         vaultId: p.vaultId,
         vaultAddress: p.vault.address,
         vaultSymbol: p.vault.tokenSymbol,
+      })),
+      withdrawals: user.withdrawals.map((w: any) => ({
+        id: w.id,
+        amount: w.amount,
+        createdAt: w.createdAt,
+        vaultId: w.vaultId,
+        vaultAddress: w.vault.address,
+        vaultSymbol: w.vault.tokenSymbol,
       })),
       hasAffiliate: !!user.affiliateRelation,
       performanceData,
