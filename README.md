@@ -11,6 +11,7 @@ CI badges and workflow artifacts:
 - Pre-Deploy Gate (OP Sepolia): [![Pre-Deploy](https://github.com/tourcamino/TRUDE/actions/workflows/pre-deploy.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/pre-deploy.yml)
 - Securify2: [![Securify2](https://github.com/tourcamino/TRUDE/actions/workflows/securify2.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/securify2.yml)
 - Gas Check: [![Gas Check](https://github.com/tourcamino/TRUDE/actions/workflows/gas-check.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/gas-check.yml)
+ - OpenZeppelin Sync: [![OpenZeppelin Sync](https://github.com/tourcamino/TRUDE/actions/workflows/openzeppelin-sync.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/openzeppelin-sync.yml)
 
 Generated artifacts (downloadable from the workflow run page):
 
@@ -81,3 +82,27 @@ Note: badges updated for `tourcamino/TRUDE`.
 ## English-only content check
 
 - `npm run i18n:check` — verifies English-only content across code, docs and tests.
+
+## GitHub cleanup (single repository)
+
+- Use `npm run github:cleanup` with environment variables:
+  - `KEEP_REPO` repository name to preserve
+  - `GITHUB_OWNER` your GitHub username or org name
+  - `GH_TOKEN` a token with `repo` scope
+  - optional `DELETE=1` to delete instead of archive
+- Example:
+  - `KEEP_REPO=trude GITHUB_OWNER=tuo-utente GH_TOKEN=<token> npm run github:cleanup`
+
+## Deployment (Render)
+
+- Blueprint: `render.yaml` defines a minimal Node web service that builds with `pnpm` and starts via `start:render`.
+- Auto deploy: enabled via Render’s GitHub integration, no external deploy API required.
+- Health check: `healthCheckPath: /`.
+- OpenZeppelin subtree
+  - Sync check: `OpenZeppelin Subtree Sync` workflow fails when subtree diverges from upstream.
+  - Auto-sync: scheduled job pulls changes from `OpenZeppelin/openzeppelin-contracts` into `openzeppelin-contracts/`.
+  - Manual run: trigger the workflow from the Actions tab.
+
+## Health Check
+
+- Endpoint: `GET /api/health` returns `{ ok, nodeEnv, baseUrl, databaseUrlPresent, databaseOk, databasePingMs }` with a minimal DB ping via Prisma.

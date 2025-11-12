@@ -1,0 +1,70 @@
+name: OpenZeppelin Subtree Sync
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 4 * * *"
+
+jobs:
+  check-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Add upstream remote
+        run: |
+          git remote add openzeppelin https://github.com/OpenZeppelin/openzeppelin-contracts.git || true
+          git remote set-url openzeppelin https://github.com/OpenZeppelin/openzeppelin-contracts.git
+
+      - name: Fetch upstream
+        run: git fetch openzeppelin master
+
+      - name: Compute subtree commit
+        id: subtree
+        run: echo "commit=$(git subtree split --prefix=openzeppelin-contracts)" >> $GITHUB_OUTPUT
+
+      - name: Compare subtree with upstream
+        run: |
+          git diff --name-status ${{ steps.subtree.outputs.commit }} openzeppelin/master
+          git diff --quiet ${{ steps.subtree.outputs.commit }} openzeppelin/master || {
+            echo "OpenZeppelin subtree is out-of-sync with upstream";
+            exit 1;
+          }
+
+  auto-sync:
+    runs-on: ubuntu-latest
+    needs: check-sync
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add openzeppelin https://github.com/OpenZeppelin/openzeppelin-contracts.git || true
+          git remote set-url openzeppelin https://github.com/OpenZeppelin/openzeppelin-contracts.git
+
+      - name: Pull subtree from upstream
+        run: git subtree pull --prefix=openzeppelin-contracts openzeppelin master --squash
+
+      - name: Push changes
+        run: git push origin HEAD:main

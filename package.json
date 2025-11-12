@@ -54,7 +54,8 @@
     "forge:build": "forge build",
     "forge:test": "forge test -vv",
     "e2e:app-flows": "ts-node --esm -r tsconfig-paths/register ./scripts/e2e-app-flows.ts",
-    "i18n:check": "node ./scripts/i18n-english-check.cjs"
+    "i18n:check": "node ./scripts/i18n-english-check.cjs",
+    "github:cleanup": "node ./scripts/github-cleanup.cjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",

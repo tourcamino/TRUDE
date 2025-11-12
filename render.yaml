@@ -6,3 +6,4 @@ services:
     buildCommand: pnpm install --frozen-lockfile && pnpm run build
     startCommand: pnpm run start:render
     autoDeploy: true
+    healthCheckPath: /

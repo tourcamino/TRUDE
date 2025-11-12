@@ -61,6 +61,26 @@ export default createApp({
       ],
     },
     {
+      type: "http",
+      name: "health",
+      base: "/api/health",
+      handler: "./src/server/health/handler.ts",
+      target: "server",
+      plugins: () => [
+        config("allowedHosts", {
+          // @ts-ignore
+          server: {
+            allowedHosts: env.BASE_URL
+              ? [env.BASE_URL.split("://")[1]]
+              : undefined,
+          },
+        }),
+        tsConfigPaths({
+          projects: ["./tsconfig.json"],
+        }),
+      ],
+    },
+    {
       type: "spa",
       name: "client",
       handler: "./index.html",
