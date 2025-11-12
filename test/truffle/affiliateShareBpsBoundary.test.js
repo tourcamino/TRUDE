@@ -7,7 +7,7 @@ function etherBI(n) { return BigInt(n) * 10n ** 18n; }
 contract("Truffle: Affiliate Share BPS Boundary", (accounts) => {
   const [owner, ledger, user, affiliate] = accounts;
 
-  it("affiliateShareBps = 0: nessuna quota affiliate, fee intera al protocollo", async () => {
+  it("affiliateShareBps = 0: no affiliate share, entire fee to protocol", async () => {
     const usdc = await USDCMock.new((5_000_000_000_000_000_000_000_000_000_000n).toString());
     const factory = await TrudeFactory.new();
     await factory.initialize(owner, ledger, 10_000_000);
@@ -25,7 +25,7 @@ contract("Truffle: Affiliate Share BPS Boundary", (accounts) => {
     const profit = etherBI(1n); // fee base 1%
     const expectedFee = (profit * 1n) / 100n;
     await factory.registerProfitFor(vault.address, user, profit.toString(), { from: owner });
-    // Pre-fund per coprire payout+fee
+    // Pre-fund to cover payout+fee
     await usdc.transfer(vault.address, profit.toString(), { from: owner });
     const affBalBefore = await usdc.balanceOf(affiliate);
     const txW = await vault.withdrawProfit({ from: user });
@@ -36,7 +36,7 @@ contract("Truffle: Affiliate Share BPS Boundary", (accounts) => {
     assert.equal(diff.toString(), "0");
   });
 
-  it("affiliateShareBps = 10000: tutta la fee all'affiliate, fee evento 0", async () => {
+  it("affiliateShareBps = 10000: entire fee to affiliate, event fee 0", async () => {
     const usdc = await USDCMock.new((5_000_000_000_000_000_000_000_000_000_000n).toString());
     const factory = await TrudeFactory.new();
     await factory.initialize(owner, ledger, 10_000_000);
@@ -54,7 +54,7 @@ contract("Truffle: Affiliate Share BPS Boundary", (accounts) => {
     const profit = etherBI(1n); // fee base 1%
     const expectedFeeBeforeAffiliate = (profit * 1n) / 100n;
     await factory.registerProfitFor(vault.address, user, profit.toString(), { from: owner });
-    // Pre-fund per coprire payout+fee (fee va all'affiliate)
+    // Pre-fund to cover payout+fee (fee goes to affiliate)
     await usdc.transfer(vault.address, profit.toString(), { from: owner });
     const affBalBefore = await usdc.balanceOf(affiliate);
     const txW = await vault.withdrawProfit({ from: user });

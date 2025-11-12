@@ -24,6 +24,13 @@ export const requestWithdrawCapital = baseProcedure
   .mutation(async ({ input, ctx }) => {
     const vault = await db.vault.findUnique({ where: { id: input.vaultId } });
     if (!vault) throw new TRPCError({ code: "NOT_FOUND", message: "Vault not found" });
+    // Validate vault address format early to avoid invalid preparedTx 'to'
+    if (!/^0x[a-fA-F0-9]{40}$/.test(vault.address)) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Vault address invalid (expected 0x + 40 hex). Please recreate the vault.",
+      });
+    }
 
     const user = await db.user.findUnique({ where: { address: input.userAddress } });
     if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });

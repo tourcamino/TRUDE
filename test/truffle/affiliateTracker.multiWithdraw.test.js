@@ -8,7 +8,7 @@ function etherBI(n) { return BigInt(n) * 10n ** 18n; }
 contract("Truffle: Affiliate Tracker Multi-Affiliate & Multi-Withdraw", (accounts) => {
   const [owner, ledger, userA, userB, affA, affB] = accounts;
 
-  it("registra earnings per più affiliate su più withdraw", async () => {
+  it("records earnings for multiple affiliates across multiple withdraws", async () => {
     const usdc = await USDCMock.new((5_000_000_000_000_000_000_000_000_000_000n).toString());
     const factory = await TrudeFactory.new();
     await factory.initialize(owner, ledger, 10_000_000);
@@ -21,11 +21,11 @@ contract("Truffle: Affiliate Tracker Multi-Affiliate & Multi-Withdraw", (account
     const vEvt = txV.logs.find((l) => l.event === "VaultCreated");
     const vault = await TrudeVault.at(vEvt.args.vault);
 
-    // Registra affiliate distinti per userA e userB
+    // Register distinct affiliates for userA and userB
     await factory.registerAffiliate(userA, affA, { from: owner });
     await factory.registerAffiliate(userB, affB, { from: owner });
 
-    // Depositi
+    // Deposits
     await usdc.transfer(userA, 2_000_000_000_000_000n, { from: owner });
     await usdc.transfer(userB, 2_000_000_000_000_000n, { from: owner });
     await usdc.approve(vault.address, 2_000_000_000_000_000n, { from: userA });
@@ -33,7 +33,7 @@ contract("Truffle: Affiliate Tracker Multi-Affiliate & Multi-Withdraw", (account
     await vault.deposit(200_000_000, { from: userA });
     await vault.deposit(200_000_000, { from: userB });
 
-    // Profitti e pre-funding per entrambi
+    // Profits and pre-funding for both
     const profitA = etherBI(1n); // 1 ether equiv
     const feeA = (profitA * 1n) / 100n; // 1%
     const profitB = etherBI(2n); // 2 ether
@@ -47,15 +47,15 @@ contract("Truffle: Affiliate Tracker Multi-Affiliate & Multi-Withdraw", (account
     const txWA = await vault.withdrawProfit({ from: userA });
     const txWB = await vault.withdrawProfit({ from: userB });
 
-    // Recupera eventi AffiliatePaid esattamente nei blocchi di interesse
+    // Retrieve AffiliatePaid events exactly in the blocks of interest
     const blkA = txWA.receipt.blockNumber;
     const blkB = txWB.receipt.blockNumber;
     const evtsA = await tracker.getPastEvents("AffiliatePaid", { fromBlock: blkA, toBlock: blkA });
     const evtsB = await tracker.getPastEvents("AffiliatePaid", { fromBlock: blkB, toBlock: blkB });
-    assert.ok(evtsA.length >= 1, "AffiliatePaid per A");
-    assert.ok(evtsB.length >= 1, "AffiliatePaid per B");
+    assert.ok(evtsA.length >= 1, "AffiliatePaid for A");
+    assert.ok(evtsB.length >= 1, "AffiliatePaid for B");
 
-    // BPS predefinito 50% → cut affiliate = fee * 50%
+    // Default BPS 50% → affiliate cut = fee * 50%
     const cutA = (feeA * 5000n) / 10000n;
     const cutB = (feeB * 5000n) / 10000n;
     assert.equal(evtsA[0].returnValues.affiliate, affA);

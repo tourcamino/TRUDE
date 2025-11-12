@@ -7,7 +7,7 @@ function etherBI(n) { return BigInt(n) * 10n ** 18n; }
 contract("Truffle: No Affiliate → Fee Entirely to Protocol", (accounts) => {
   const [owner, ledger, user, someone] = accounts;
 
-  it("senza affiliate, la fee intera va al protocollo (owner)", async () => {
+  it("without affiliate, the entire fee goes to the protocol (owner)", async () => {
     const usdc = await USDCMock.new((5_000_000_000_000_000_000_000_000_000_000n).toString());
     const factory = await TrudeFactory.new();
     await factory.initialize(owner, ledger, 10_000_000);
@@ -15,7 +15,7 @@ contract("Truffle: No Affiliate → Fee Entirely to Protocol", (accounts) => {
     const vEvt = txV.logs.find((l) => l.event === "VaultCreated");
     const vault = await TrudeVault.at(vEvt.args.vault);
 
-    // Non registriamo nessun affiliate per l'utente
+    // Do not register any affiliate for the user
 
     await usdc.transfer(user, 1_000_000_000_000_000n, { from: owner });
     await usdc.approve(vault.address, 1_000_000_000_000_000n, { from: user });
@@ -24,7 +24,7 @@ contract("Truffle: No Affiliate → Fee Entirely to Protocol", (accounts) => {
     const profit = etherBI(1n); // fee base 1%
     const expectedFee = (profit * 1n) / 100n;
     await factory.registerProfitFor(vault.address, user, profit.toString(), { from: owner });
-    // Pre-fund per coprire payout+fee
+    // Pre-fund to cover payout+fee
     await usdc.transfer(vault.address, profit.toString(), { from: owner });
     const ownerBalBefore = await usdc.balanceOf(owner);
     const someoneBalBefore = await usdc.balanceOf(someone);
@@ -33,10 +33,10 @@ contract("Truffle: No Affiliate → Fee Entirely to Protocol", (accounts) => {
     assert.equal(w.args.fee.toString(), expectedFee.toString());
     const ownerBalAfter = await usdc.balanceOf(owner);
     const someoneBalAfter = await usdc.balanceOf(someone);
-    // Fee intera al protocollo
+    // Entire fee to protocol
     const ownerDiff = ownerBalAfter.sub(ownerBalBefore);
     assert.equal(ownerDiff.toString(), expectedFee.toString());
-    // Nessun pagamento terzo
+    // No third-party payment
     const someoneDiff = someoneBalAfter.sub(someoneBalBefore);
     assert.equal(someoneDiff.toString(), "0");
   });

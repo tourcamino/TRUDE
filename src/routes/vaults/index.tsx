@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 import { Navbar } from "~/components/Navbar";
 import { Sparkline } from "~/components/Sparkline";
 import { useTRPC } from "~/trpc/react";
-import { useEthUsdPrice, formatWeiToUSD } from "~/utils/currency";
+import { formatUSDValue, tokenAmountToNumber, formatTokenAmount } from "~/utils/currency";
 import { useWalletStore } from "~/stores/walletStore";
 import { 
   Vault, 
@@ -44,8 +44,20 @@ function VaultsPage() {
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [sortKey, setSortKey] = useState<"tvl" | "yield" | "change">("tvl");
   const [yieldThreshold, setYieldThreshold] = useState<number>(0.02);
-  const priceQuery = useEthUsdPrice();
-  const toUSD = (wei: string) => (priceQuery.data ? formatWeiToUSD(wei, priceQuery.data) : "...");
+  const isStable = (symbol?: string) => {
+    const s = (symbol || "").toUpperCase();
+    return s.includes("USDC") || s.includes("USDT") || s.includes("DAI") || s.includes("USDCE") || s.includes("BUSD");
+  };
+
+  const formatVaultTVL = (vault: { totalValueLocked: string; tokenSymbol: string }) => {
+    const amountStr = vault.totalValueLocked || "0";
+    if (isStable(vault.tokenSymbol)) {
+      const usdNum = tokenAmountToNumber(amountStr, 6);
+      return `$${formatUSDValue(usdNum)}`;
+    }
+    // Fallback: show token amount with symbol for non-stable tokens
+    return `${formatTokenAmount(amountStr, 18)} ${vault.tokenSymbol}`;
+  };
   const { address, isConnected } = useWalletStore();
   const zeroAddr = "0x0000000000000000000000000000000000000000";
   const isDepositedFilter = (() => {
@@ -94,14 +106,18 @@ function VaultsPage() {
     (metricsQuery.data?.metrics ?? []).map((m: any) => [m.id, m])
   );
 
-  const formatChangeUSD = (changeStr: string | undefined): { text: string; positive: boolean | null } => {
+  const formatChange = (vault: { tokenSymbol: string }, changeStr: string | undefined): { text: string; positive: boolean | null } => {
     if (!changeStr) return { text: "…", positive: null };
     try {
-      const num = Number(changeStr);
-      const positive = num > 0 ? true : num < 0 ? false : null;
-      const absStr = String(Math.abs(num));
-      const usd = toUSD(absStr);
-      const text = positive === null ? `$${usd}` : `${positive ? "+" : "-"}$${usd}`;
+      const positive = BigInt(changeStr) > 0n ? true : BigInt(changeStr) < 0n ? false : null;
+      const abs = (BigInt(changeStr) < 0n ? -BigInt(changeStr) : BigInt(changeStr)).toString();
+      if (isStable(vault.tokenSymbol)) {
+        const usd = formatUSDValue(tokenAmountToNumber(abs, 6));
+        const text = positive === null ? `$${usd}` : `${positive ? "+" : "-"}$${usd}`;
+        return { text, positive };
+      }
+      const tok = formatTokenAmount(abs, 18);
+      const text = positive === null ? `${tok} ${vault.tokenSymbol}` : `${positive ? "+" : "-"}${tok} ${vault.tokenSymbol}`;
       return { text, positive };
     } catch {
       return { text: "…", positive: null };
@@ -390,13 +406,13 @@ function VaultsPage() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">TVL</span>
-                        <span className="font-semibold text-gray-900">${toUSD(vault.totalValueLocked)}</span>
+                        <span className="font-semibold text-gray-900">{formatVaultTVL(vault)}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">24h change</span>
                         {(() => {
                           const m = metricsById.get(vault.id);
-                          const f = formatChangeUSD(m?.change24h);
+                          const f = formatChange(vault, m?.change24h);
                           const color = f.positive === null ? "text-gray-900" : f.positive ? "text-emerald-600" : "text-red-600";
                           return <span className={`text-sm font-medium ${color}`}>{f.text}</span>;
                         })()}
@@ -460,11 +476,11 @@ function VaultsPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-gray-600">TVL</div>
-                      <div className="text-sm font-semibold text-gray-900">${toUSD(vault.totalValueLocked)}</div>
+                      <div className="text-sm font-semibold text-gray-900">{formatVaultTVL(vault)}</div>
                       <div className="mt-1 text-xs text-gray-600">24h change</div>
                       {(() => {
                         const m = metricsById.get(vault.id);
-                        const f = formatChangeUSD(m?.change24h);
+                        const f = formatChange(vault, m?.change24h);
                         const color = f.positive === null ? "text-gray-900" : f.positive ? "text-emerald-600" : "text-red-600";
                         return <div className={`text-xs font-medium ${color}`}>{f.text}</div>;
                       })()}

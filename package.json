@@ -5,6 +5,7 @@
     "dev": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",
+    "start:render": "pnpm run db:push && vinxi start",
     "typecheck": "tsc --noEmit",
     "typecheck:tests": "tsc -p tsconfig.tests.json --noEmit",
     "lint": "eslint . -c eslint.config.mjs --max-warnings 0",
@@ -51,7 +52,9 @@
     "hh:gas": "cross-env GAS_REPORT=1 hardhat --config hardhat.config.cjs test test/smoke.test.cjs",
     "gas:check": "node -e \"require('fs').mkdirSync('reports',{recursive:true})\" && cross-env GAS_REPORT=1 GAS_REPORT_FILE=reports/gas-report.txt hardhat --config hardhat.config.cjs test test/smoke.test.cjs ; node scripts/gas-check.cjs",
     "forge:build": "forge build",
-    "forge:test": "forge test -vv"
+    "forge:test": "forge test -vv",
+    "e2e:app-flows": "ts-node --esm -r tsconfig-paths/register ./scripts/e2e-app-flows.ts",
+    "i18n:check": "node ./scripts/i18n-english-check.cjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
@@ -124,6 +127,8 @@
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.31.1",
     "vite-tsconfig-paths": "^5.1.4"
+    ,
+    "tsconfig-paths": "^4.2.0"
   },
   "private": true,
   "type": "module",

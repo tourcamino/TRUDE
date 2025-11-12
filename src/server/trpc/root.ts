@@ -1,7 +1,7 @@
 import {
   createCallerFactory,
   createTRPCRouter,
-} from "~/server/trpc/main";
+} from "./main";
 import { getFactorySettings } from "./procedures/getFactorySettings";
 import { updateFactorySettings } from "./procedures/updateFactorySettings";
 import { createVault } from "./procedures/createVault";

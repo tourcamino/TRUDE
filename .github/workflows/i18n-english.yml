@@ -1,0 +1,23 @@
+name: English-only Content Check
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  i18n_check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Run English-only check
+        working-directory: TRUDE
+        run: node ./scripts/i18n-english-check.cjs

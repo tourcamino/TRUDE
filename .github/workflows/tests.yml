@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       suite:
-        description: "Seleziona la suite di test"
+        description: "Select test suite"
         type: choice
         default: full
         options:

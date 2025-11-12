@@ -1,6 +1,6 @@
 # Testing & CI
 
-Questo documento riassume il setup di testing e come eseguirlo localmente e in CI.
+This document summarizes the testing setup and how to run it locally and in CI.
 
 ## Hardhat
 - Script principali:
@@ -14,38 +14,38 @@ Questo documento riassume il setup di testing e come eseguirlo localmente e in C
   - `npm run hh:test:all` (esegue in sequenza tutti i test)
 - Coverage:
   - Plugin: `solidity-coverage`
-  - Comando: `npm run hh:coverage`
-  - Report: `TRUDE/coverage/index.html`, `TRUDE/coverage/lcov-report/`
-- Note Windows:
-  - Su Windows Mocha/Node può mostrare un crash `libuv` al termine; i report di coverage vengono comunque generati. In CI (Ubuntu) non si verifica.
+  - Command: `npm run hh:coverage`
+  - Reports: `TRUDE/coverage/index.html`, `TRUDE/coverage/lcov-report/`
+- Windows notes:
+  - On Windows Mocha/Node may show a `libuv` crash at the end; coverage reports are still generated. In CI (Ubuntu) this does not occur.
 
-## Foundry
-- Configurazione: `TRUDE/foundry.toml`
-- Script npm:
+- ## Foundry
+- Configuration: `TRUDE/foundry.toml`
+- npm scripts:
   - `npm run forge:build`
   - `npm run forge:test`
-- Installazione (Git Bash):
+- Installation (Git Bash):
   ```bash
   curl -L https://foundry.paradigm.xyz | bash && source ~/.bashrc && foundryup
   ```
-- Verifica:
+- Verification:
   - `forge --version`
 
-## CI (GitHub Actions)
+- ## CI (GitHub Actions)
 - Workflow: `TRUDE/.github/workflows/tests.yml`
-- Esegue su Ubuntu:
+- Runs on Ubuntu:
   - Hardhat: compile, test, coverage
   - Foundry: build, test
 
-## Tipi TypeScript per i test
-- Progetti TS dedicati:
-  - `TRUDE/tsconfig.tests.json` (include `test/**/*.ts`, `test/**/*.tsx`)
-  - `TRUDE/test/tsconfig.json` (override di `exclude` per non escludere i test)
-- Tipi inclusi:
+## TypeScript types for tests
+- Dedicated TS projects:
+  - `TRUDE/tsconfig.tests.json` (includes `test/**/*.ts`, `test/**/*.tsx`)
+  - `TRUDE/test/tsconfig.json` (override of `exclude` to not exclude tests)
+- Included types:
   - `node`, `mocha`, `chai`, `@nomicfoundation/hardhat-chai-matchers`, `@nomicfoundation/hardhat-ethers`
-- Impostazioni:
+- Settings:
   - `strict: false`, `noUncheckedIndexedAccess: false`, `noEmit: true`
 
 ## Docker
-- Docker è stato escluso dal progetto e la directory `TRUDE/docker/` rimossa.
-- Eventuali riferimenti a Docker verranno aggiornati progressivamente dove necessario.
+- Docker has been excluded from the project and the directory `TRUDE/docker/` removed.
+- Any references to Docker will be updated progressively where necessary.

@@ -49,10 +49,28 @@ export const createDeposit = baseProcedure
     const minDeposit = BigInt(settings.minDeposit);
     const depositAmount = BigInt(input.amount);
 
+    const inferTokenDecimals = (symbol?: string) => {
+      const s = (symbol || "").toUpperCase();
+      if (s.includes("USDC") || s.includes("USDT") || s.includes("BUSD")) return 6;
+      if (s.includes("DAI")) return 18;
+      return 18;
+    };
+
+    const formatDecimalFromSmallest = (smallest: string, decimals: number) => {
+      const clean = (smallest || "0").replace(/\D/g, "");
+      const padded = clean.padStart(decimals + 1, "0");
+      const intPart = padded.slice(0, -decimals) || "0";
+      const fracRaw = padded.slice(-decimals);
+      const frac = fracRaw.replace(/0+$/, "");
+      return frac ? `${intPart}.${frac}` : intPart;
+    };
+
     if (depositAmount < minDeposit) {
+      const decs = inferTokenDecimals(vault.tokenSymbol as string);
+      const minToken = formatDecimalFromSmallest(settings.minDeposit, decs);
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: `Deposit amount must be at least ${minDeposit.toString()} (in token's smallest unit)`,
+        message: `Deposit amount must be at least ${minToken} ${vault.tokenSymbol} (smallest unit: ${settings.minDeposit})`,
       });
     }
 

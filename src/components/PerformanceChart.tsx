@@ -1,5 +1,5 @@
 import { TrendingUp } from "lucide-react";
-import { useEthUsdPrice, formatWeiToUSD, weiToUsdNumber } from "~/utils/currency";
+import { useEthUsdPrice, formatUSDValue, weiToUsdNumber, tokenAmountToNumber } from "~/utils/currency";
 
 interface PerformanceDataPoint {
   date: Date;
@@ -26,8 +26,17 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
   }
 
   const priceQuery = useEthUsdPrice();
-  const toUSDNumber = (wei: string) => (priceQuery.data ? weiToUsdNumber(wei, priceQuery.data) : 0);
-  const toUSD = (wei: string) => (priceQuery.data ? formatWeiToUSD(wei, priceQuery.data) : "...");
+  const toUSDNumberBySymbol = (balance: string, symbol: string) => {
+    const s = (symbol || "").toUpperCase();
+    if (s.includes("USDC") || s.includes("USDT") || s.includes("DAI") || s.includes("USDCE") || s.includes("BUSD")) {
+      return tokenAmountToNumber(balance, 6);
+    }
+    return priceQuery.data ? weiToUsdNumber(balance, priceQuery.data) : 0;
+  };
+  const toUSDBySymbol = (balance: string, symbol: string) => {
+    const usdNum = toUSDNumberBySymbol(balance, symbol);
+    return formatUSDValue(usdNum);
+  };
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString(undefined, { 
@@ -45,7 +54,7 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
 
   // Calculate scales
   const minBalance = 0;
-  const maxBalance = Math.max(...data.map(d => toUSDNumber(d.balance)));
+  const maxBalance = Math.max(...data.map(d => toUSDNumberBySymbol(d.balance, d.vaultSymbol)));
   const balanceRange = maxBalance - minBalance;
 
   const firstPoint = data[0]!;
@@ -60,8 +69,8 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
     return padding.left + ((date.getTime() - minTime) / timeRange) * chartWidth;
   };
 
-  const scaleY = (balance: string) => {
-    const value = toUSDNumber(balance);
+  const scaleY = (balance: string, symbol: string) => {
+    const value = toUSDNumberBySymbol(balance, symbol);
     if (balanceRange === 0) return height - padding.bottom - chartHeight / 2;
     return height - padding.bottom - ((value - minBalance) / balanceRange) * chartHeight;
   };
@@ -69,7 +78,7 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
   // Generate path for line and area
   const points = data.map(d => ({
     x: scaleX(d.date),
-    y: scaleY(d.balance),
+    y: scaleY(d.balance, d.vaultSymbol),
   }));
 
   const linePath = points.map((p, i) => 
@@ -104,7 +113,7 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
         <div className="text-right">
           <p className="text-sm text-gray-600">Current Balance</p>
           <p className="text-2xl font-bold text-gray-900">
-            ${data.length > 0 ? toUSD(lastPointData.balance) : "0.00"}
+            ${data.length > 0 ? toUSDBySymbol(lastPointData.balance, lastPointData.vaultSymbol) : "0.00"}
           </p>
         </div>
       </div>

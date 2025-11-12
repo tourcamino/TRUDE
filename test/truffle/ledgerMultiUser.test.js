@@ -5,7 +5,7 @@ const USDCMock = artifacts.require("USDCMock");
 contract("Truffle: Multi-user profits & TVL consistency", (accounts) => {
   const [owner, ledger, userA, userB] = accounts;
 
-  it("mantiene profitti separati e aggiorna TVL correttamente", async () => {
+  it("keeps profits separated and updates TVL correctly", async () => {
     const usdc = await USDCMock.new(2_000_000n * 10n ** 6n);
     const factory = await TrudeFactory.new();
     await factory.initialize(owner, ledger, 10_000_000);
@@ -15,7 +15,7 @@ contract("Truffle: Multi-user profits & TVL consistency", (accounts) => {
     const vaultAddr = vEvt.args.vault;
     const vault = await TrudeVault.at(vaultAddr);
 
-    // Fondi e approvazioni
+    // Funds and approvals
     await usdc.transfer(userA, 500_000_000, { from: owner });
     await usdc.transfer(userB, 500_000_000, { from: owner });
     await usdc.approve(vault.address, 500_000_000, { from: userA });
@@ -27,7 +27,7 @@ contract("Truffle: Multi-user profits & TVL consistency", (accounts) => {
     const tvlAfterDeposits = await vault.totalValueLocked();
     assert.equal(tvlAfterDeposits.toString(), (200_000_000 + 100_000_000).toString());
 
-    // Profitti separati
+    // Separate profits
     await factory.registerProfitFor(vault.address, userA, 30_000_000, { from: owner }); // 30 USDC
     await factory.registerProfitFor(vault.address, userB, 10_000_000, { from: owner }); // 10 USDC
 
@@ -39,7 +39,7 @@ contract("Truffle: Multi-user profits & TVL consistency", (accounts) => {
     const tvlAfterProfits = await vault.totalValueLocked();
     assert.equal(tvlAfterProfits.toString(), (200_000_000 + 100_000_000 + 30_000_000 + 10_000_000).toString());
 
-    // UserA ritira; TVL si riduce del suo profitto (30 USDC)
+    // UserA withdraws; TVL decreases by their profit (30 USDC)
     await vault.withdrawProfit({ from: userA });
     const profitAAfter = await vault.profits(userA);
     assert.equal(profitAAfter.toString(), "0");
@@ -47,7 +47,7 @@ contract("Truffle: Multi-user profits & TVL consistency", (accounts) => {
     const tvlAfterAWithdraw = await vault.totalValueLocked();
     assert.equal(tvlAfterAWithdraw.toString(), (200_000_000 + 100_000_000 + 30_000_000 + 10_000_000 - 30_000_000).toString());
 
-    // UserB ancora intatto, ritira ora
+    // UserB untouched, withdraw now
     await vault.withdrawProfit({ from: userB });
     const profitBAfter = await vault.profits(userB);
     assert.equal(profitBAfter.toString(), "0");

@@ -57,38 +57,38 @@ await vault.connect(ledgerSigner).pause();
 - Implement an on-chain service layer in the backend (provider/signer) and a lightweight indexer to mirror events into Prisma models.
 
 ## Obiettivo
-Allineare le funzionalità della piattaforma TRUDE con i contratti on-chain per depositi, profitti, pause e tracciamento affiliati.
+Align TRUDE platform features with on-chain contracts for deposits, profits, pause, and affiliate tracking.
 
-## Prerequisiti
-- Provider EVM (MetaMask o RPC), rete di test locale (`hardhat node`) o testnet.
-- ABIs da `artifacts/` o `cache/` dopo `hh:compile`.
-- Indirizzi dei contratti deployati (Factory, Vaults, Affiliate).
+## Prerequisites
+- EVM provider (MetaMask or RPC), local test network (`hardhat node`) or testnet.
+- ABIs from `artifacts/` or `cache/` after `hh:compile`.
+- Addresses of deployed contracts (Factory, Vaults, Affiliate).
 
-## Mappatura Funzioni UI → Contratti
-- Creazione Vault (Admin UI): chiamata `Factory.createVault(tokenAddress)`; salvare l’indirizzo del vault ritornato ed emesso in `VaultCreated` nel DB.
-- Deposito (UI utente):
-  - `ERC20.approve(vaultAddress, amount)` sul token del vault.
+## UI Functions Mapping → Contracts
+- Vault creation (Admin UI): call `Factory.createVault(tokenAddress)`; save the returned vault address emitted in `VaultCreated` into the DB.
+- Deposit (User UI):
+  - `ERC20.approve(vaultAddress, amount)` on the vault token.
   - `Vault.deposit(amount)`.
-  - Ascoltare `Deposit` e `TVLUpdated` per aggiornare UI/DB.
-- Registrazione Profitto (Admin/Strategy Engine):
-  - Chiamare funzione in Factory che inoltri `Vault.registerProfit(user, amount)` (da aggiungere nella Factory).
-  - Ascoltare `ProfitRegistered`/`TVLUpdated` e aggiornare DB.
-- Prelievo Profitto (UI utente): `Vault.withdrawProfit()`; ascoltare `Withdraw` e aggiornare DB.
+  - Listen to `Deposit` and `TVLUpdated` to update UI/DB.
+- Profit registration (Admin/Strategy Engine):
+  - Call a function in Factory that forwards `Vault.registerProfit(user, amount)` (to be added in Factory).
+  - Listen to `ProfitRegistered`/`TVLUpdated` and update DB.
+- Profit withdrawal (User UI): `Vault.withdrawProfit()`; listen to `Withdraw` and update DB.
 - Pause/Unpause:
-  - Factory: `factory.pause()`/`factory.unpause()` (solo ledger).
-  - Vault: `vault.pause()`/`vault.unpause()` (owner o ledger).
+  - Factory: `factory.pause()`/`factory.unpause()` (ledger only).
+  - Vault: `vault.pause()`/`vault.unpause()` (owner or ledger).
 
-## Sincronizzazione Eventi → DB
-- Sottoscrivere eventi Factory/Vault/Affiliate via provider WebSocket o polling:
-  - `VaultCreated`: creare record in `Vault` DB con indirizzo/token.
-  - `Deposit`, `ProfitRegistered`, `Withdraw`, `TVLUpdated`: aggiornare `Deposit`, `Profit`, TVL e saldi.
-  - `AffiliatePaid`: aggiornare guadagni affiliati.
+## Event Synchronization → DB
+- Subscribe to Factory/Vault/Affiliate events via WebSocket provider or polling:
+  - `VaultCreated`: create a record in the `Vault` DB with address/token.
+  - `Deposit`, `ProfitRegistered`, `Withdraw`, `TVLUpdated`: update `Deposit`, `Profit`, TVL and balances.
+  - `AffiliatePaid`: update affiliate earnings.
 
-## Error Handling ed Edge Cases
-- `Pausable`: bloccare operazioni in UI quando `paused` su factory/vault.
-- `BelowMin`: impedire deposito sotto `minDeposit` (mostrare messaggio con unità del token).
-- `onlyFactory`/`onlyOwner`/`onlyLedger`: applicare controlli lato server e UI, evitare chiamate non autorizzate.
-- Decimali token: usare `decimals()` per calcolare unità corrette in input/output.
+## Error Handling and Edge Cases
+- `Pausable`: block UI operations when `paused` on factory/vault.
+- `BelowMin`: prevent deposits below `minDeposit` (show a message with token units).
+- `onlyFactory`/`onlyOwner`/`onlyLedger`: apply server and UI checks, avoid unauthorized calls.
+- Token decimals: use `decimals()` to calculate correct units in input/output.
 
 ## Esempio di Integrazione (pseudo-code, ethers v6)
 ```ts

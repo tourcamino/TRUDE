@@ -7,7 +7,7 @@ function etherBI(n) { return BigInt(n) * 10n ** 18n; }
 contract("Truffle: Max Fee Percent Scaling & Cap", (accounts) => {
   const [owner, ledger, user] = accounts;
 
-  it("profit piccolo: fee 1% sotto cap 5% → nessun clamp", async () => {
+  it("small profit: 1% fee under 5% cap → no clamp", async () => {
     const usdc = await USDCMock.new((10_000_000_000_000_000_000_000_000n).toString());
     const factory = await TrudeFactory.new();
     await factory.initialize(owner, ledger, 100_000); // 0.1 USDC
@@ -29,7 +29,7 @@ contract("Truffle: Max Fee Percent Scaling & Cap", (accounts) => {
     assert.equal(w.args.amount.toString(), (profit - fee).toString());
   });
 
-  it("profit intermedio: base ~2.9% → clamp a 2%", async () => {
+  it("medium profit: base ~2.9% → clamp to 2%", async () => {
     const usdc = await USDCMock.new((10_000_000_000_000_000_000_000_000n).toString());
     const factory = await TrudeFactory.new();
     await factory.initialize(owner, ledger, 100_000);
@@ -43,8 +43,8 @@ contract("Truffle: Max Fee Percent Scaling & Cap", (accounts) => {
 
     const profit = etherBI(100_000n);
     const baseRate = 1n + (profit * 19n) / etherBI(1_000_000n); // ≈ 2.9%
-    assert.ok(baseRate > 2n, "baseRate deve superare cap per clamp");
-    const fee = (profit * 2n) / 100n; // clamp a 2%
+    assert.ok(baseRate > 2n, "baseRate must exceed cap to clamp");
+    const fee = (profit * 2n) / 100n; // clamp to 2%
     await factory.registerProfitFor(vault.address, user, profit.toString(), { from: owner });
     await usdc.transfer(vault.address, (profit + fee).toString(), { from: owner });
     const txW = await vault.withdrawProfit({ from: user });
@@ -53,7 +53,7 @@ contract("Truffle: Max Fee Percent Scaling & Cap", (accounts) => {
     assert.equal(w.args.amount.toString(), (profit - fee).toString());
   });
 
-  it("profit molto alto: base 20% → clamp a 10%", async () => {
+  it("very large profit: base 20% → clamp to 10%", async () => {
     const usdc = await USDCMock.new((10_000_000_000_000_000_000_000_000n).toString());
     const factory = await TrudeFactory.new();
     await factory.initialize(owner, ledger, 100_000);
@@ -66,7 +66,7 @@ contract("Truffle: Max Fee Percent Scaling & Cap", (accounts) => {
     await vault.deposit(100_000_000, { from: user });
 
     const profit = etherBI(2_000_000n);
-    const fee = (profit * 10n) / 100n; // clamp a 10%
+    const fee = (profit * 10n) / 100n; // clamp to 10%
     await factory.registerProfitFor(vault.address, user, profit.toString(), { from: owner });
     await usdc.transfer(vault.address, (profit + fee).toString(), { from: owner });
     const txW = await vault.withdrawProfit({ from: user });

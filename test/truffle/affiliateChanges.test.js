@@ -5,7 +5,7 @@ const USDCMock = artifacts.require("USDCMock");
 contract("Truffle: Affiliate Changes & Share BPS", (accounts) => {
   const [owner, ledger, user, affiliateA, affiliateB] = accounts;
 
-  it("aggiorna affiliate e affiliateShareBps, verifica eventi e distribuzioni", async () => {
+  it("updates affiliate and affiliateShareBps, verifies events and distributions", async () => {
     const usdc = await USDCMock.new(1_000_000n * 10n ** 6n);
 
     const factory = await TrudeFactory.new();
@@ -16,19 +16,19 @@ contract("Truffle: Affiliate Changes & Share BPS", (accounts) => {
     const vaultAddr = vEvt.args.vault;
     const vault = await TrudeVault.at(vaultAddr);
 
-    // Registra affiliate A e poi cambia share bps
+    // Register affiliate A then change share bps
     await factory.registerAffiliate(user, affiliateA);
     const txShare = await factory.setAffiliateShareBps(2000, { from: owner }); // 20%
     const evtShare = txShare.logs.find((l) => l.event === "AffiliateShareUpdated");
-    assert.ok(evtShare, "AffiliateShareUpdated emesso");
+    assert.ok(evtShare, "AffiliateShareUpdated emitted");
     assert.equal(evtShare.args.newShareBps.toString(), "2000");
 
-    // Approva e deposita
+    // Approve and deposit
     await usdc.transfer(user, 200_000_000, { from: owner });
     await usdc.approve(vault.address, 200_000_000, { from: user });
     await vault.deposit(100_000_000, { from: user }); // 100 USDC
 
-    // Registra profitto 10 USDC; fee base 1%, fee = 0.1 USDC, affiliate cut = 20% di fee => 0.02 USDC
+    // Register profit 10 USDC; base fee 1%, fee = 0.1 USDC, affiliate cut = 20% of fee => 0.02 USDC
     await factory.registerProfitFor(vault.address, user, 10_000_000, { from: owner });
 
     const affBalBefore = await usdc.balanceOf(affiliateA);
@@ -42,14 +42,14 @@ contract("Truffle: Affiliate Changes & Share BPS", (accounts) => {
     const affiliateGain = BigInt(affBalAfter.toString()) - BigInt(affBalBefore.toString());
     const ownerGain = BigInt(ownerBalAfter.toString()) - BigInt(ownerBalBefore.toString());
 
-    // Fee totale 0.1 USDC => affiliate 20% = 0.02 USDC; owner riceve 0.08 USDC
+    // Total fee 0.1 USDC => affiliate 20% = 0.02 USDC; owner receives 0.08 USDC
     assert.equal(affiliateGain.toString(), "20000");
     assert.equal(ownerGain.toString(), "80000");
 
-    // Cambia affiliate per l'utente e verifica registro
+    // Change affiliate for the user and verify mapping
     await factory.registerAffiliate(user, affiliateB).catch(() => {}); // prevenire AlreadyRegistered
-    // Nota: la Factory non consente ri-registrazione (AlreadyRegistered), quindi verifichiamo mapping invariato
+    // Note: the Factory does not allow re-registration (AlreadyRegistered), so we verify the mapping remains unchanged
     const affMapped = await factory.affiliateOf(user);
-    assert.equal(affMapped, affiliateA, "affiliate rimane A dopo tentativo di ri-registrazione");
+    assert.equal(affMapped, affiliateA, "affiliate remains A after re-registration attempt");
   });
 });

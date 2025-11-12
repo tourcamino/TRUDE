@@ -74,6 +74,14 @@ function VaultDetailPage() {
     ? pricesQuery.data?.prices?.[tokenSymbol.toUpperCase()]
     : undefined;
 
+  // Validate vault address to prevent failing prepared transactions
+  const vaultAddressValid = /^0x[a-fA-F0-9]{40}$/.test(((vaultQuery.data as VaultData | undefined)?.address) || "");
+
+  // Factory settings (minDeposit in smallest units)
+  const factorySettingsQuery = useQuery(
+    trpc.getFactorySettings.queryOptions()
+  );
+
   const createDepositMutation = useMutation(
     trpc.createDeposit.mutationOptions({
       onSuccess: () => {
@@ -142,6 +150,7 @@ function VaultDetailPage() {
     formState: { errors: profitErrors },
     reset: profitReset,
     watch: profitWatch,
+    setValue: profitSetValue,
   } = useForm<ProfitForm>({
     resolver: zodResolver(profitSchema),
     defaultValues: { userAddress: address || "" },
@@ -178,6 +187,15 @@ function VaultDetailPage() {
     const normalized = `${cleanedInt}${frac}`;
     const trimmed = normalized.replace(/^0+/, "") || "0";
     return trimmed;
+  };
+
+  const formatDecimalFromSmallest = (smallest: string, decimals: number) => {
+    const s = (smallest || "0").replace(/\D/g, "");
+    const padded = s.padStart(decimals + 1, "0");
+    const intPart = padded.slice(0, -decimals) || "0";
+    const fracPartRaw = padded.slice(-decimals);
+    const fracPart = fracPartRaw.replace(/0+$/, "");
+    return fracPart ? `${intPart}.${fracPart}` : intPart;
   };
 
   const onDepositSubmit = (data: DepositForm) => {
@@ -363,13 +381,24 @@ function VaultDetailPage() {
                         const usd = amountDec && !isNaN(Number(amountDec)) && tokenUsdPrice
                           ? formatUSDValue(Number(amountDec) * tokenUsdPrice)
                           : "";
+                        const minSmallest = factorySettingsQuery.data?.minDeposit;
+                        const minToken = minSmallest ? formatDecimalFromSmallest(minSmallest, decimals) : "";
+                        const minUsd = minToken && tokenUsdPrice ? formatUSDValue(Number(minToken) * tokenUsdPrice) : "";
+                        const tooLow = minSmallest && smallest ? (BigInt(smallest) < BigInt(minSmallest)) : false;
                         return (
-                          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
                             <div className="rounded-lg bg-gray-50 p-2 text-xs text-gray-700">
                               <span className="font-medium">≈ USD:</span> {usd ? `$${usd}` : "-"}
                             </div>
                             <div className="rounded-lg bg-gray-50 p-2 text-xs text-gray-700">
                               <span className="font-medium">Smallest unit:</span> {smallest || "-"}
+                            </div>
+                            <div className="rounded-lg bg-gray-50 p-2 text-xs text-gray-700">
+                              <span className="font-medium">Min deposit:</span> {minToken ? `${minToken} ${vault.tokenSymbol}` : "-"}
+                              {minUsd && <span className="ml-1 text-gray-500">(≈ ${minUsd})</span>}
+                              {tooLow && (
+                                <span className="ml-2 text-red-600">Amount below minimum</span>
+                              )}
                             </div>
                           </div>
                         );
@@ -378,7 +407,19 @@ function VaultDetailPage() {
 
                     <button
                       type="submit"
-                      disabled={createDepositMutation.isPending || vault.isPaused}
+                      disabled={
+                        createDepositMutation.isPending ||
+                        vault.isPaused ||
+                        (() => {
+                          const amountDec = depositWatch("amountDecimal") || "";
+                          const decimals = inferTokenDecimals(vault.tokenSymbol);
+                          const smallest = amountDec && /^\d+(\.\d+)?$/.test(amountDec)
+                            ? toSmallestUnits(amountDec, decimals)
+                            : "";
+                          const minSmallest = factorySettingsQuery.data?.minDeposit;
+                          return !!minSmallest && !!smallest && BigInt(smallest) < BigInt(minSmallest);
+                        })()
+                      }
                       className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-50"
                     >
                       {createDepositMutation.isPending ? "Processing..." : "Deposit"}
@@ -453,6 +494,10 @@ function VaultDetailPage() {
                         toast.error("Please connect your wallet");
                         return;
                       }
+                      if (!vaultAddressValid) {
+                        toast.error("Vault address invalid (expected 0x + 40 hex). Please recreate the vault.");
+                        return;
+                      }
                       try {
                         const decimals = inferTokenDecimals(vault?.tokenSymbol);
                         const smallest = toSmallestUnits(data.amountDecimal, decimals);
@@ -471,7 +516,12 @@ function VaultDetailPage() {
                         });
                       } catch (error: any) {
                         console.error(error);
-                        toast.error(error.message || "Failed to send transaction");
+                        const msg = error?.message || "Failed to send transaction";
+                        if (msg.includes("Vault address invalid")) {
+                          toast.error("Vault address invalid (expected 0x + 40 hex). Please recreate the vault.");
+                        } else {
+                          toast.error(msg);
+                        }
                       }
                     })}
                     className="space-y-4"
@@ -496,6 +546,7 @@ function VaultDetailPage() {
                               onClick={async () => {
                                 if (!canWithdrawAll) return;
                                 if (!isConnected) { toast.error("Please connect your wallet"); return; }
+                                if (!vaultAddressValid) { toast.error("Vault address invalid (expected 0x + 40 hex). Please recreate the vault."); return; }
                                 try {
                                   const { preparedTx, request } = await withdrawCapitalMutation.mutateAsync({
                                     mode: "customer",
@@ -512,15 +563,26 @@ function VaultDetailPage() {
                                   });
                                 } catch (error: any) {
                                   console.error(error);
-                                  toast.error(error.message || "Failed to send transaction");
+                                  const msg = error?.message || "Failed to send transaction";
+                                  if (msg.includes("Vault address invalid")) {
+                                    toast.error("Vault address invalid (expected 0x + 40 hex). Please recreate the vault.");
+                                  } else {
+                                    toast.error(msg);
+                                  }
                                 }
                               }}
-                              disabled={!canWithdrawAll}
+                              disabled={!canWithdrawAll || !vaultAddressValid}
                               className="rounded-md bg-gradient-to-r from-teal-600 to-cyan-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm disabled:opacity-50"
                             >
                               Withdraw All {tokenUsdPrice && availableUsd !== "-" ? `(≈ $${availableUsd})` : ""}
                             </button>
                           </div>
+                          {!vaultAddressValid && (
+                            <div className="mt-3 flex items-center text-xs text-red-600">
+                              <AlertCircle className="mr-1 h-4 w-4" />
+                              Vault address invalid (expected 0x + 40 hex). Please recreate the vault.
+                            </div>
+                          )}
                           <div className="mt-3 flex flex-wrap gap-2">
                             {[25, 50, 75, 100].map((pct) => {
                               const part = (available * BigInt(pct)) / 100n;
@@ -538,7 +600,7 @@ function VaultDetailPage() {
                                     const decStr = fracStr.length > 0 ? `${int.toString()}.${fracStr}` : int.toString();
                                     withdrawSetValue("amountDecimal", decStr, { shouldValidate: true });
                                   }}
-                                  disabled={!canWithdrawAll}
+                                  disabled={!canWithdrawAll || !vaultAddressValid}
                                   className="rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100 disabled:opacity-50"
                                 >
                                   {pct}% {tokenUsdPrice && partUsd !== "-" ? `(≈ $${partUsd})` : `(${partToken} ${vault.tokenSymbol})`}

@@ -64,7 +64,7 @@ contract("Truffle: Fee Boundary Conditions", (accounts) => {
     let w3 = tx3.logs.find((l) => l.event === "Withdraw");
     assert.equal(w3.args.fee.toString(), fee3.toString());
 
-    // profit = 1,000,000 ether + 1 wei => cap a 20%
+    // profit = 1,000,000 ether + 1 wei => cap at 20%
     const p4 = near + 1n;
     await factory.registerProfitFor(vault.address, user, p4.toString(), { from: owner });
     const fee4 = (p4 * 20n) / 100n;

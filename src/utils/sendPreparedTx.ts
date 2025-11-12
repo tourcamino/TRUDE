@@ -10,7 +10,7 @@ export type PreparedTx = {
 export async function sendPreparedTx(prepared: PreparedTx, provider?: Eip1193Provider): Promise<string> {
   const p = provider ?? getInjectedProvider();
   if (!p) {
-    throw new Error("Nessun provider EIP-1193 disponibile (installare un wallet)");
+    throw new Error("No EIP-1193 provider available (install a wallet)");
   }
 
   const currentChainId = await getChainId(p);

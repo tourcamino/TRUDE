@@ -5,15 +5,15 @@ const USDCMock = artifacts.require("USDCMock");
 
 function etherBI(n) { return BigInt(n) * 10n ** 18n; }
 
-contract("Truffle: Withdraw senza AffiliateTracker configurato", (accounts) => {
+contract("Truffle: Withdraw without configured AffiliateTracker", (accounts) => {
   const [owner, ledger, user, affiliate] = accounts;
 
-  it("non emette AffiliatePaid se il tracker non è configurato", async () => {
+  it("does not emit AffiliatePaid if tracker is not configured", async () => {
     const usdc = await USDCMock.new((5_000_000_000_000_000_000_000_000_000_000n).toString());
     const factory = await TrudeFactory.new();
     await factory.initialize(owner, ledger, 10_000_000);
 
-    // Deployiamo un tracker ma NON lo configuriamo nella factory
+    // Deploy a tracker but do NOT configure it in the factory
     const tracker = await TrudeAffiliate.new();
     await tracker.initialize(factory.address, { from: owner });
 
@@ -34,12 +34,12 @@ contract("Truffle: Withdraw senza AffiliateTracker configurato", (accounts) => {
 
     const txW = await vault.withdrawProfit({ from: user });
     const w = txW.logs.find((l) => l.event === "Withdraw");
-    assert.ok(w, "Withdraw emesso");
+    assert.ok(w, "Withdraw emitted");
     assert.equal(w.args.fee.toString(), expectedFee.toString());
 
-    // Il tracker non è stato configurato nella factory → nessun evento AffiliatePaid
+    // Tracker is not configured in the factory → no AffiliatePaid event
     const blk = txW.receipt.blockNumber;
     const paid = await tracker.getPastEvents("AffiliatePaid", { fromBlock: blk, toBlock: blk });
-    assert.equal(paid.length, 0, "Nessun AffiliatePaid emesso dal tracker non configurato");
+    assert.equal(paid.length, 0, "No AffiliatePaid emitted by unconfigured tracker");
   });
 });

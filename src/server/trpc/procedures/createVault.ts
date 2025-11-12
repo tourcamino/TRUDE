@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
+import { randomBytes } from "crypto";
 
 export const createVault = baseProcedure
   .input(
@@ -34,8 +35,8 @@ export const createVault = baseProcedure
 
     // Accept any token symbol for test vaults; no USDC restriction
 
-    // Generate a mock vault address
-    const vaultAddress = `0x${Math.random().toString(16).substring(2, 15)}${Math.random().toString(16).substring(2, 15)}${Math.random().toString(16).substring(2, 15)}`;
+    // Generate a valid mock vault address (20 bytes => 40 hex chars)
+    const vaultAddress = `0x${randomBytes(20).toString("hex")}`;
 
     const vault = await db.vault.create({
       data: {

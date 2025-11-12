@@ -9,7 +9,7 @@ import { DepositModal } from "~/components/DepositModal";
 import { WithdrawModal } from "~/components/WithdrawModal";
 import { useTRPC } from "~/trpc/react";
 import { useWalletStore } from "~/stores/walletStore";
-import { formatTokenAmount } from "~/utils/currency";
+import { formatTokenAmount, useEthUsdPrice, formatUSDValue, tokenAmountToNumber, weiToUsdNumber } from "~/utils/currency";
 import {
   DollarSign,
   TrendingUp,
@@ -30,6 +30,7 @@ export const Route = createFileRoute("/dashboard/")({
 function DashboardPage() {
   const trpc = useTRPC();
   const { address, isConnected } = useWalletStore();
+  const ethUsdQuery = useEthUsdPrice();
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
 
@@ -40,7 +41,20 @@ function DashboardPage() {
     )
   );
 
-  const formatAmount = (amount: string) => formatTokenAmount(amount, 6);
+  const isStable = (symbol?: string) => {
+    const s = (symbol || "").toUpperCase();
+    return s.includes("USDC") || s.includes("USDT") || s.includes("DAI") || s.includes("USDCE") || s.includes("BUSD");
+  };
+
+  const toUsdNumber = (amount: string, symbol?: string): number => {
+    const s = (symbol || "").toUpperCase();
+    if (isStable(s)) return tokenAmountToNumber(amount, 6);
+    if (s.includes("ETH")) return ethUsdQuery.data ? weiToUsdNumber(amount, ethUsdQuery.data) : 0;
+    // Default fallback
+    return tokenAmountToNumber(amount, 6);
+  };
+
+  const formatAmount = (amount: string, decimals: number = 6) => formatTokenAmount(amount, decimals);
 
   if (!isConnected || !address) {
     return (
@@ -62,6 +76,27 @@ function DashboardPage() {
   }
 
   const dashboard = userDashboardQuery.data;
+
+  // Derived USD totals computed per token symbol
+  const totalDepositedUSD = formatUSDValue(
+    (dashboard?.deposits || []).reduce((sum: number, d: any) => sum + toUsdNumber(d.amount, d.vaultSymbol), 0)
+  );
+  const totalProfitsUSD = formatUSDValue(
+    (dashboard?.profits || []).reduce((sum: number, p: any) => sum + toUsdNumber(p.amount, p.vaultSymbol), 0)
+  );
+  const availableProfitsUSD = formatUSDValue(
+    (dashboard?.profits || []).filter((p: any) => !p.withdrawn).reduce((sum: number, p: any) => sum + toUsdNumber(p.amount, p.vaultSymbol), 0)
+  );
+  const withdrawnProfitsUSD = formatUSDValue(
+    (dashboard?.profits || []).filter((p: any) => p.withdrawn).reduce((sum: number, p: any) => sum + toUsdNumber(p.amount, p.vaultSymbol), 0)
+  );
+  const totalWithdrawnCapitalUSD = formatUSDValue(
+    (dashboard?.withdrawals || []).reduce((sum: number, w: any) => sum + toUsdNumber(w.amount, w.vaultSymbol), 0)
+  );
+  const availablePrincipalUSD = formatUSDValue(
+    ((dashboard?.deposits || []).reduce((sum: number, d: any) => sum + toUsdNumber(d.amount, d.vaultSymbol), 0)) -
+    ((dashboard?.withdrawals || []).reduce((sum: number, w: any) => sum + toUsdNumber(w.amount, w.vaultSymbol), 0))
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
@@ -126,7 +161,7 @@ function DashboardPage() {
                   <div className="text-right">
                     <p className="text-sm text-green-100">Available</p>
                     <p className="text-xl font-bold text-white">
-                      ${formatAmount(dashboard?.availableProfits || "0")}
+                      ${availableProfitsUSD}
                     </p>
                   </div>
                 </div>
@@ -149,7 +184,7 @@ function DashboardPage() {
                   <div className="text-right">
                     <p className="text-sm text-teal-100">Available</p>
                     <p className="text-xl font-bold text-white">
-                      ${formatAmount(dashboard?.availablePrincipal || "0")}
+                      ${availablePrincipalUSD}
                     </p>
                   </div>
                 </div>
@@ -161,38 +196,38 @@ function DashboardPage() {
               <StatCard
                 icon={DollarSign}
                 label="Total Deposited"
-                value={`$${formatAmount(dashboard?.totalDeposited || "0")}`}
+                value={`$${totalDepositedUSD}`}
                 gradient="from-blue-500 to-indigo-600"
               />
               <StatCard
                 icon={TrendingUp}
                 label="Total Profits"
-                value={`$${formatAmount(dashboard?.totalProfits || "0")}`}
+                value={`$${totalProfitsUSD}`}
                 gradient="from-green-500 to-emerald-600"
               />
               <StatCard
                 icon={ArrowUpCircle}
                 label="Available to Withdraw"
-                value={`$${formatAmount(dashboard?.availableProfits || "0")}`}
+                value={`$${availableProfitsUSD}`}
                 subValue="Ready to claim"
                 gradient="from-purple-500 to-pink-600"
               />
               <StatCard
                 icon={CheckCircle}
                 label="Withdrawn"
-                value={`$${formatAmount(dashboard?.withdrawnProfits || "0")}`}
+                value={`$${withdrawnProfitsUSD}`}
                 gradient="from-orange-500 to-red-600"
               />
               <StatCard
                 icon={DollarSign}
                 label="Available Principal"
-                value={`$${formatAmount(dashboard?.availablePrincipal || "0")}`}
+                value={`$${availablePrincipalUSD}`}
                 gradient="from-cyan-500 to-teal-600"
               />
               <StatCard
                 icon={XCircle}
                 label="Capital Withdrawn"
-                value={`$${formatAmount(dashboard?.totalWithdrawnCapital || "0")}`}
+                value={`$${totalWithdrawnCapitalUSD}`}
                 gradient="from-teal-500 to-cyan-600"
               />
             </div>
@@ -249,7 +284,9 @@ function DashboardPage() {
                           </p>
                         </div>
                         <p className="font-semibold text-gray-900">
-                          ${formatAmount(deposit.amount)}
+                          {isStable(deposit.vaultSymbol)
+                            ? `$${formatUSDValue(tokenAmountToNumber(deposit.amount, 6))}`
+                            : `${formatTokenAmount(deposit.amount, deposit.vaultSymbol?.toUpperCase().includes("ETH") ? 18 : 6)} ${deposit.vaultSymbol}`}
                         </p>
                       </div>
                     ))}
@@ -290,7 +327,9 @@ function DashboardPage() {
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-green-600">
-                            ${formatAmount(profit.amount)}
+                            {isStable(profit.vaultSymbol)
+                              ? `$${formatUSDValue(tokenAmountToNumber(profit.amount, 6))}`
+                              : `${formatTokenAmount(profit.amount, profit.vaultSymbol?.toUpperCase().includes("ETH") ? 18 : 6)} ${profit.vaultSymbol}`}
                           </p>
                           {profit.withdrawn ? (
                             <span className="flex items-center space-x-1 text-xs text-gray-500">
