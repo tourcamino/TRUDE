@@ -78,11 +78,6 @@ Note: badges updated for `tourcamino/TRUDE`.
   - Only keys present in `gas-thresholds.json` are enforced; entries not present are ignored.
   - Update thresholds based on actual data and desired profile (`SOLC_RUNS`, `SOLC_VIA_IR`).
 
-## Deployment (Render)
+## English-only content check
 
-- Blueprint: `render.yaml` defines a Node web service that builds with `pnpm` and starts via `start:render`.
-- CI deploy: `.github/workflows/deploy-render.yml` triggers a Render deploy via a Deploy Hook after smoke tests pass.
-- Required secret in GitHub:
-  - `RENDER_DEPLOY_HOOK_URL` — the Render Deploy Hook URL for the service.
-- Local check:
-  - `npm run i18n:check` — verifies English-only content.
+- `npm run i18n:check` — verifies English-only content across code, docs and tests.
