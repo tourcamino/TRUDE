@@ -1,4 +1,5 @@
-import { TypedDataDomain, TypedDataField, verifyTypedData, TypedDataEncoder } from "ethers";
+import type { TypedDataDomain, TypedDataField } from "ethers";
+import { verifyTypedData, TypedDataEncoder } from "ethers";
 
 export type WithdrawTypedData = {
   user: string;

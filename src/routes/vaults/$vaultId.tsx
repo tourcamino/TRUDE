@@ -1,15 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import toast from "react-hot-toast";
 import { Navbar } from "~/components/Navbar";
+import { setPageTitle } from "~/utils/seo";
 import { useTRPC } from "~/trpc/react";
 import { useWalletStore } from "~/stores/walletStore";
 import { sendPreparedTx } from "~/utils/sendPreparedTx";
-import { formatTokenAmount, formatUSDValue } from "~/utils/currency";
+import { formatTokenAmount, formatUSDValue, useEthUsdPrice } from "~/utils/currency";
 import {
   Vault,
   TrendingUp,
@@ -58,8 +59,11 @@ function VaultDetailPage() {
   const { vaultId } = Route.useParams();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"deposit" | "profit" | "withdraw">("deposit");
+  const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
   const { address, isConnected } = useWalletStore();
+  const ethPriceQuery = useEthUsdPrice();
+  const [walletChainId, setWalletChainId] = useState<number | null>(null);
+  const [expectedChainId, setExpectedChainId] = useState<number | null>(null);
 
   const vaultQuery = useQuery(
     trpc.getVaultById.queryOptions({ vaultId: parseInt(vaultId) })
@@ -77,24 +81,66 @@ function VaultDetailPage() {
   // Validate vault address to prevent failing prepared transactions
   const vaultAddressValid = /^0x[a-fA-F0-9]{40}$/.test(((vaultQuery.data as VaultData | undefined)?.address) || "");
 
+  useEffect(() => {
+    setPageTitle(`TRUDE • ${vault?.tokenSymbol || "Vault"}`);
+    (async () => {
+      try {
+        const res = await fetch("/api/health");
+        const json = await res.json();
+        setExpectedChainId(json.chainId ?? null);
+      } catch {}
+      try {
+        const ethereum: any = (window as any).ethereum;
+        if (ethereum) {
+          const hex = await ethereum.request({ method: "eth_chainId" });
+          const id = typeof hex === "string" ? parseInt(hex, 16) : Number(hex);
+          setWalletChainId(id);
+        }
+      } catch {}
+    })();
+  }, []);
+
   // Factory settings (minDeposit in smallest units)
   const factorySettingsQuery = useQuery(
     trpc.getFactorySettings.queryOptions()
   );
 
-  const createDepositMutation = useMutation(
-    trpc.createDeposit.mutationOptions({
+  const prepareDepositMutation = useMutation(
+    trpc.prepareDeposit.mutationOptions({
+      onError: (error) => {
+        toast.error(error.message || "Failed to prepare deposit");
+      },
+    })
+  );
+
+  const finalizeDepositMutation = useMutation(
+    trpc.finalizeDeposit.mutationOptions({
       onSuccess: () => {
-        toast.success("Deposit successful!");
+        toast.success("Deposit finalized");
         queryClient.invalidateQueries({ queryKey: trpc.getVaultById.queryKey({ vaultId: parseInt(vaultId) }) });
         queryClient.invalidateQueries({ queryKey: trpc.getDashboardStats.queryKey() });
         depositReset();
       },
       onError: (error) => {
-        toast.error(error.message || "Failed to deposit");
+        toast.error(error.message || "Failed to finalize deposit");
       },
     })
   );
+
+  const syncVaultEventsMutation = useMutation(
+    trpc.syncVaultEvents.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: trpc.getVaultById.queryKey({ vaultId: parseInt(vaultId) }) });
+      },
+    })
+  );
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      try { syncVaultEventsMutation.mutate({ vaultId: parseInt(vaultId) }); } catch {}
+    }, 20000);
+    return () => clearInterval(id);
+  }, [vaultId]);
 
   const registerProfitMutation = useMutation(
     trpc.registerProfit.mutationOptions({
@@ -198,14 +244,39 @@ function VaultDetailPage() {
     return fracPart ? `${intPart}.${fracPart}` : intPart;
   };
 
-  const onDepositSubmit = (data: DepositForm) => {
+  const onDepositSubmit = async (data: DepositForm) => {
+    if (!isConnected) { toast.error("Please connect your wallet"); return; }
+    if (!vaultAddressValid) { toast.error("Vault address invalid (expected 0x + 40 hex). Please recreate the vault."); return; }
+    if (expectedChainId && walletChainId && expectedChainId !== walletChainId) { toast.error(`Wrong network. Please switch to chain ${expectedChainId}`); return; }
     const decimals = inferTokenDecimals(vault?.tokenSymbol);
     const smallest = toSmallestUnits(data.amountDecimal, decimals);
-    createDepositMutation.mutate({
-      userAddress: data.userAddress,
-      vaultId: parseInt(vaultId),
-      amount: smallest,
-    });
+    try {
+      const res = await prepareDepositMutation.mutateAsync({ userAddress: data.userAddress, vaultId: parseInt(vaultId), amount: smallest });
+      try {
+        const ethereum: any = (window as any).ethereum;
+        if (ethereum) {
+          const [gasApprove, gasDeposit, gasPriceHex] = await Promise.all([
+            ethereum.request({ method: "eth_estimateGas", params: [res.prepared.approveTx] }),
+            ethereum.request({ method: "eth_estimateGas", params: [res.prepared.depositTx] }),
+            ethereum.request({ method: "eth_gasPrice" })
+          ]);
+          const gasApproveDec = parseInt(String(gasApprove), 16);
+          const gasDepositDec = parseInt(String(gasDeposit), 16);
+          const gasPriceDec = parseInt(String(gasPriceHex), 16);
+          const totalGas = gasApproveDec + gasDepositDec;
+          const totalWei = BigInt(totalGas) * BigInt(gasPriceDec);
+          const totalEth = Number(totalWei) / 1e18;
+          const usd = ethPriceQuery.data ? (totalEth * ethPriceQuery.data).toFixed(2) : undefined;
+          toast.success(`Estimated gas: approve ~${gasApproveDec}, deposit ~${gasDepositDec}${usd ? ` (≈ $${usd})` : ""}`);
+        }
+      } catch {}
+      const approveHash = await sendPreparedTx(res.prepared.approveTx as any);
+      const depositHash = await sendPreparedTx(res.prepared.depositTx as any);
+      await finalizeDepositMutation.mutateAsync({ userAddress: data.userAddress, vaultId: parseInt(vaultId), amount: smallest, txHash: depositHash });
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || "Failed to send deposit transactions");
+    }
   };
 
   const onProfitSubmit = (data: ProfitForm) => {
@@ -275,12 +346,20 @@ function VaultDetailPage() {
                     </p>
                   </div>
                 </div>
-                {vault.isPaused && (
-                  <div className="flex items-center space-x-2 rounded-full bg-red-500 px-4 py-2">
-                    <AlertCircle className="h-5 w-5 text-white" />
-                    <span className="font-semibold text-white">Paused</span>
-                  </div>
-                )}
+                <div className="flex flex-col items-end space-y-2">
+                  {vault.isPaused && (
+                    <div className="flex items-center space-x-2 rounded-full bg-red-500 px-4 py-2">
+                      <AlertCircle className="h-5 w-5 text-white" />
+                      <span className="font-semibold text-white">Paused</span>
+                    </div>
+                  )}
+                  {expectedChainId && walletChainId && expectedChainId !== walletChainId && (
+                    <div className="flex items-center space-x-2 rounded-full bg-yellow-400 px-4 py-2 text-yellow-900">
+                      <AlertCircle className="h-5 w-5" />
+                      <span className="font-semibold">Wrong network. Expected {expectedChainId}, wallet {walletChainId}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -298,6 +377,28 @@ function VaultDetailPage() {
                   <p className="text-sm text-indigo-200">Total Profits</p>
                   <p className="mt-1 text-2xl font-bold text-white">{vault.profits.length}</p>
                 </div>
+              </div>
+
+              {/* New Fee Model Information */}
+              <div className="mt-6 rounded-xl bg-white/10 p-4 backdrop-blur-sm border border-white/20">
+                <h3 className="text-sm font-semibold text-indigo-200 mb-3">💎 Revolutionary Fee Structure</h3>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-300">0%</div>
+                    <div className="text-xs text-indigo-200">Deposit Fee</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-yellow-300">10-30%</div>
+                    <div className="text-xs text-indigo-200">Performance Fee</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-300">0%</div>
+                    <div className="text-xs text-indigo-200">Withdrawal Fee</div>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-indigo-100 text-center">
+                  🚀 Only pay on profits! No fees on deposits or withdrawals. Maximum capital efficiency.
+                </p>
               </div>
             </div>
 
@@ -317,17 +418,6 @@ function VaultDetailPage() {
                     <span>Deposit</span>
                   </button>
                 <button
-                  onClick={() => setActiveTab("profit")}
-                  className={`flex items-center space-x-2 border-b-2 px-4 py-3 font-medium transition-colors ${
-                    activeTab === "profit"
-                      ? "border-indigo-600 text-indigo-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  <ArrowUpCircle className="h-5 w-5" />
-                  <span>Register Profit</span>
-                </button>
-                <button
                   onClick={() => setActiveTab("withdraw")}
                   className={`flex items-center space-x-2 border-b-2 px-4 py-3 font-medium transition-colors ${
                     activeTab === "withdraw"
@@ -342,6 +432,9 @@ function VaultDetailPage() {
 
                 {activeTab === "deposit" ? (
                   <form onSubmit={handleDepositSubmit(onDepositSubmit)} className="space-y-4">
+                    <div className="rounded-md bg-blue-50 p-3 text-xs text-blue-900">
+                      This action sends two transactions with your wallet: <span className="font-semibold">Approve</span> the vault as spender of your tokens, then <span className="font-semibold">Deposit</span> the chosen amount.
+                    </div>
                     <div>
                       <label htmlFor="userAddress" className="mb-1 block text-sm font-medium text-gray-700">
                         User Address
@@ -408,7 +501,7 @@ function VaultDetailPage() {
                     <button
                       type="submit"
                       disabled={
-                        createDepositMutation.isPending ||
+                        (prepareDepositMutation.isPending || finalizeDepositMutation.isPending) ||
                         vault.isPaused ||
                         (() => {
                           const amountDec = depositWatch("amountDecimal") || "";
@@ -422,69 +515,7 @@ function VaultDetailPage() {
                       }
                       className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-50"
                     >
-                      {createDepositMutation.isPending ? "Processing..." : "Deposit"}
-                    </button>
-                  </form>
-                ) : activeTab === "profit" ? (
-                  <form onSubmit={handleProfitSubmit(onProfitSubmit)} className="space-y-4">
-                    <div>
-                      <label htmlFor="profitUserAddress" className="mb-1 block text-sm font-medium text-gray-700">
-                        User Address
-                      </label>
-                      <input
-                        id="profitUserAddress"
-                        type="text"
-                        placeholder="0x..."
-                        {...profitRegister("userAddress")}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                      {profitErrors.userAddress && (
-                        <p className="mt-1 text-sm text-red-600">{profitErrors.userAddress.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label htmlFor="profitAmountDecimal" className="mb-1 block text-sm font-medium text-gray-700">
-                        Profit Amount ({vault.tokenSymbol})
-                      </label>
-                      <input
-                        id="profitAmountDecimal"
-                        type="text"
-                        placeholder="e.g., 10 or 10.5"
-                        {...profitRegister("profitAmountDecimal")}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                      {profitErrors.profitAmountDecimal && (
-                        <p className="mt-1 text-sm text-red-600">{profitErrors.profitAmountDecimal.message}</p>
-                      )}
-                      {(() => {
-                        const amountDec = profitWatch("profitAmountDecimal") || "";
-                        const decimals = inferTokenDecimals(vault.tokenSymbol);
-                        const smallest = amountDec && /^\d+(\.\d+)?$/.test(amountDec)
-                          ? toSmallestUnits(amountDec, decimals)
-                          : "";
-                        const usd = amountDec && !isNaN(Number(amountDec)) && tokenUsdPrice
-                          ? formatUSDValue(Number(amountDec) * tokenUsdPrice)
-                          : "";
-                        return (
-                          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            <div className="rounded-lg bg-gray-50 p-2 text-xs text-gray-700">
-                              <span className="font-medium">≈ USD:</span> {usd ? `$${usd}` : "-"}
-                            </div>
-                            <div className="rounded-lg bg-gray-50 p-2 text-xs text-gray-700">
-                              <span className="font-medium">Smallest unit:</span> {smallest || "-"}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={registerProfitMutation.isPending || vault.isPaused}
-                      className="w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-50"
-                    >
-                      {registerProfitMutation.isPending ? "Processing..." : "Register Profit"}
+                      {(prepareDepositMutation.isPending || finalizeDepositMutation.isPending) ? "Processing..." : "Deposit"}
                     </button>
                   </form>
                 ) : (

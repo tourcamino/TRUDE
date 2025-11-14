@@ -16,6 +16,10 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 import "./TrudeVault.sol";
 import "./TrudeAffiliate.sol";
 
+// Supply Chain Extensions
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+
+
 // Minimal interface for the affiliate tracker to avoid symbol resolution issues
 interface ITrudeAffiliate {
     function recordAffiliateEarning(address affiliate, uint256 amount) external;
@@ -27,6 +31,7 @@ contract TrudeFactory is
     PausableUpgradeable,
     UUPSUpgradeable
 {
+
     /// @notice Ledger multisig for secondary authorization
     address public ledger;
     /// @notice Optional affiliate tracker contract (owned by protocol)
@@ -43,6 +48,27 @@ contract TrudeFactory is
     mapping(address => address) public affiliateOf;
     /// @notice Authorized vaults created by this factory
     mapping(address => bool) public isVault;
+
+    // --- Supply Chain Extensions ---
+    /// @notice Counter for commodity NFT token IDs
+    uint256 private _commodityTokenIdCounter;
+    /// @notice Mapping commodity type → NFT contract address
+    mapping(string => address) public commodityNFTContracts;
+    /// @notice Mapping commodity NFT token ID → commodity metadata
+    mapping(uint256 => CommodityMetadata) public commodityMetadata;
+    /// @notice Authorized commodity types
+    mapping(string => bool) public authorizedCommodities;
+
+    struct CommodityMetadata {
+        string commodityType;      // "coffee", "wheat", "gold"
+        string origin;             // "Ethiopia, Yirgacheffe"
+        uint256 quantity;          // in base units
+        uint256 valueUSD;          // value in USD * 10^18
+        address minter;            // who minted the NFT
+        uint256 mintTimestamp;     // when it was minted
+        string qualityGrade;       // "premium", "grade A", etc.
+        bool isActive;             // if commodity is still valid
+    }
 
     /// @notice Event emitted when vault is created
     /**
@@ -83,6 +109,29 @@ contract TrudeFactory is
      */
     event MaxFeeUpdated(uint256 newMax);
 
+    /**
+     * @notice Emitted when a commodity NFT is minted
+     * @param tokenId The NFT token ID
+     * @param commodityType The type of commodity
+     * @param origin The origin location
+     * @param minter Who minted the NFT
+     */
+    event CommodityNFTMinted(uint256 indexed tokenId, string commodityType, string origin, address indexed minter);
+
+    /**
+     * @notice Emitted when a commodity type is authorized
+     * @param commodityType The commodity type being authorized
+     */
+    event CommodityAuthorized(string commodityType);
+
+    /**
+     * @notice Emitted when commodity arbitrage profit is recorded
+     * @param commodityType The commodity type
+     * @param profitUSD The profit in USD
+     * @param arbitrageType The type of arbitrage performed
+     */
+    event CommodityArbitrageProfit(string commodityType, uint256 profitUSD, string arbitrageType);
+
     modifier onlyLedger() {
         if (msg.sender != ledger) revert NotAuthorized();
         _;
@@ -112,7 +161,7 @@ contract TrudeFactory is
 
     // --- Factory Core ---
 
-    function createVault(address _token) external whenNotPaused returns (address) {
+    function createVault(address _token) external whenNotPaused onlyOwner returns (address) {
         if (_token == address(0)) revert ZeroToken();
         TrudeVault vault = new TrudeVault();
         address own = owner();
@@ -127,6 +176,7 @@ contract TrudeFactory is
 
     function registerAffiliate(address user, address referrer) external whenNotPaused {
         if (user == address(0) || referrer == address(0)) revert ZeroAddress();
+        if (user == referrer) revert SelfReferral();
         if (affiliateOf[user] != address(0)) revert AlreadyRegistered();
         affiliateOf[user] = referrer;
         emit AffiliateRegistered(user, referrer);
@@ -144,6 +194,7 @@ contract TrudeFactory is
     function setAffiliateTracker(address _tracker) external onlyOwner {
         if (_tracker == address(0)) revert ZeroAddress();
         affiliateTracker = _tracker;
+        // Affiliate tracker should be initialized separately before setting
     }
 
     function setMinDeposit(uint256 _newMin) external onlyOwner {
@@ -151,10 +202,8 @@ contract TrudeFactory is
         emit MinDepositUpdated(_newMin);
     }
 
-    function setAffiliateShareBps(uint256 _newShareBps) external onlyOwner {
-        if (_newShareBps > 10000) revert InvalidBps();
-        affiliateShareBps = _newShareBps;
-        emit AffiliateShareUpdated(_newShareBps);
+    function setAffiliateShareBps(uint256) external onlyOwner {
+        revert AffiliateShareFrozen();
     }
 
     function setMaxFeePercent(uint256 _newMax) external onlyOwner {
@@ -179,6 +228,83 @@ contract TrudeFactory is
         }
     }
 
+    // --- Supply Chain Functions ---
+
+    /**
+     * @notice Authorize a new commodity type for NFT minting
+     * @param commodityType The commodity type (e.g., "coffee", "wheat")
+     */
+    function authorizeCommodity(string memory commodityType) external onlyOwner {
+        authorizedCommodities[commodityType] = true;
+        emit CommodityAuthorized(commodityType);
+    }
+
+    /**
+     * @notice Mint commodity NFT with supply chain metadata
+     * @param commodityType Type of commodity (must be authorized)
+     * @param origin Origin location (e.g., "Ethiopia, Yirgacheffe")
+     * @param quantity Quantity in base units
+     * @param valueUSD Value in USD * 10^18
+     * @param qualityGrade Quality grade (e.g., "premium", "grade A")
+     */
+    function mintCommodityNFT(
+        string memory commodityType,
+        string memory origin,
+        uint256 quantity,
+        uint256 valueUSD,
+        string memory qualityGrade
+    ) external whenNotPaused returns (uint256) {
+        if (!authorizedCommodities[commodityType]) revert CommodityNotAuthorized();
+        if (quantity == 0) revert ZeroQuantity();
+        if (valueUSD == 0) revert ZeroValue();
+
+        uint256 tokenId = _commodityTokenIdCounter;
+        _commodityTokenIdCounter++;
+
+        commodityMetadata[tokenId] = CommodityMetadata({
+            commodityType: commodityType,
+            origin: origin,
+            quantity: quantity,
+            valueUSD: valueUSD,
+            minter: msg.sender,
+            mintTimestamp: block.timestamp,
+            qualityGrade: qualityGrade,
+            isActive: true
+        });
+
+        emit CommodityNFTMinted(tokenId, commodityType, origin, msg.sender);
+        return tokenId;
+    }
+
+    /**
+     * @notice Record commodity arbitrage profit for supply chain tracking
+     * @param commodityType The commodity type
+     * @param profitUSD The profit in USD * 10^18
+     * @param arbitrageType The arbitrage type (e.g., "cross-border", "seasonal")
+     */
+    function recordCommodityArbitrageProfit(
+        string memory commodityType,
+        uint256 profitUSD,
+        string memory arbitrageType
+    ) external whenNotPaused {
+        if (!authorizedCommodities[commodityType]) revert CommodityNotAuthorized();
+        if (profitUSD == 0) revert ZeroProfit();
+
+        emit CommodityArbitrageProfit(commodityType, profitUSD, arbitrageType);
+    }
+
+    /**
+     * @notice Get commodity metadata for audit trail
+     * @param tokenId The NFT token ID
+     */
+    function getCommodityMetadata(uint256 tokenId) 
+        external 
+        view 
+        returns (CommodityMetadata memory) 
+    {
+        return commodityMetadata[tokenId];
+    }
+
     /// @notice Forward profit registration to a specific vault (owner-controlled)
     /// @dev Satisfies Vault's onlyFactory modifier by invoking as Factory
     function registerProfitFor(address vault, address user, uint256 profit)
@@ -198,6 +324,12 @@ contract TrudeFactory is
     error ZeroAddress();
     error AlreadyRegistered();
     error InvalidBps();
+    error SelfReferral();
+    error AffiliateShareFrozen();
     error InvalidPercent();
     error NotVault();
+    error CommodityNotAuthorized();
+    error ZeroQuantity();
+    error ZeroValue();
+    error ZeroProfit();
 }

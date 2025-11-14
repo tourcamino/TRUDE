@@ -26,6 +26,10 @@ export function WithdrawModal({ isOpen, onClose, profits }: WithdrawModalProps) 
   const { address } = useWalletStore();
   const [selectedProfitId, setSelectedProfitId] = useState<number | null>(null);
 
+  const chainInfoQuery = useQuery(
+    trpc.getChainInfo.queryOptions()
+  );
+
   const withdrawMutation = useMutation(
     trpc.withdrawProfit.mutationOptions()
   );
@@ -73,6 +77,11 @@ export function WithdrawModal({ isOpen, onClose, profits }: WithdrawModalProps) 
     )
   );
   const prices: Record<string, number> = tokenPricesQuery.data?.prices || {};
+  const chainId = chainInfoQuery.data?.chainId;
+  const chainMinThresholdUSD = (id?: number) => {
+    const map: Record<number, number> = { 8453: 0.25, 10: 0.4, 42161: 0.35, 137: 0.3 };
+    return id ? (map[id] ?? 0.5) : 0.5;
+  };
 
   const availableProfits = profits.filter(p => !p.withdrawn);
 
@@ -107,6 +116,10 @@ export function WithdrawModal({ isOpen, onClose, profits }: WithdrawModalProps) 
             </div>
           ) : (
             <>
+              <div className="mb-4 rounded-lg bg-indigo-50 p-3 text-xs text-indigo-900">
+                <span className="font-medium">Batching:</span>
+                <span className="ml-1">Withdraw when ≥ ${chainMinThresholdUSD(chainId)} USD</span>
+              </div>
               <div className="mb-6">
                 <p className="text-sm text-gray-600">
                   Select a profit to withdraw. Each withdrawal will be processed individually.
@@ -146,7 +159,15 @@ export function WithdrawModal({ isOpen, onClose, profits }: WithdrawModalProps) 
                     </div>
                     <button
                       onClick={() => handleWithdraw(profit.id)}
-                      disabled={(withdrawMutation.isPending || finalizeMutation.isPending) && selectedProfitId === profit.id}
+                      disabled={(((withdrawMutation.isPending || finalizeMutation.isPending) && selectedProfitId === profit.id)) || (() => {
+                        const dec = inferTokenDecimals(profit.vaultSymbol);
+                        const tokens = tokenAmountToNumber(profit.amount, dec);
+                        const sym = profit.vaultSymbol || "";
+                        const isStable = /^(USDC|USDT|BUSD|DAI)$/i.test(sym);
+                        const price = prices[sym] ?? (isStable ? 1 : undefined);
+                        const usdVal = price ? (tokens * price) : 0;
+                        return usdVal < chainMinThresholdUSD(chainId);
+                      })()}
                       className="rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:shadow-lg disabled:opacity-50"
                     >
                       {(withdrawMutation.isPending || finalizeMutation.isPending) && selectedProfitId === profit.id
@@ -157,9 +178,13 @@ export function WithdrawModal({ isOpen, onClose, profits }: WithdrawModalProps) 
                 ))}
               </div>
 
-              <div className="mt-6 rounded-lg bg-green-50 p-4">
-                <p className="text-sm text-green-900">
-                  Withdrawals will be processed on-chain. Gas fees will apply.
+              <div className="mt-6 rounded-lg bg-green-50 p-4 border border-green-200">
+                <h4 className="text-sm font-semibold text-green-900 mb-2">💰 Zero Fee Withdrawals</h4>
+                <p className="text-sm text-green-800 mb-2">
+                  🎉 No withdrawal fees! You keep 100% of your profits.
+                </p>
+                <p className="text-xs text-green-700">
+                  Only standard blockchain gas fees apply. All profits are yours to keep.
                 </p>
               </div>
             </>

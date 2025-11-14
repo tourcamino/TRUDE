@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { Navbar } from "~/components/Navbar";
@@ -41,6 +41,36 @@ function DashboardPage() {
     )
   );
 
+  const exportUserCsvMutation = useMutation(
+    trpc.exportUserCSV.mutationOptions({
+      onSuccess: (res) => {
+        if (!res.success) { toast.error("User not found"); return; }
+        const blob = new Blob([res.csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = res.filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("CSV scaricato");
+      },
+      onError: (error) => { toast.error(error.message || "Export failed"); }
+    })
+  );
+
+  const affiliateStatsQuery = useQuery(
+    trpc.getAffiliateStats.queryOptions(
+      { userAddress: address || "0x0000000000000000000000000000000000000000" },
+      { enabled: isConnected && !!address }
+    )
+  );
+  const chainInfoQuery = useQuery(
+    trpc.getChainInfo.queryOptions(
+      undefined,
+      { enabled: isConnected && !!address }
+    )
+  );
+
   const isStable = (symbol?: string) => {
     const s = (symbol || "").toUpperCase();
     return s.includes("USDC") || s.includes("USDT") || s.includes("DAI") || s.includes("USDCE") || s.includes("BUSD");
@@ -55,6 +85,13 @@ function DashboardPage() {
   };
 
   const formatAmount = (amount: string, decimals: number = 6) => formatTokenAmount(amount, decimals);
+
+  const chainMinThresholdUSD = (chainId?: number) => {
+    if (!chainId) return 0.5;
+    const map: Record<number, number> = { 8453: 0.25, 10: 0.4, 42161: 0.35, 137: 0.3 };
+    return map[chainId] ?? 0.5;
+  };
+  const chainId = chainInfoQuery.data?.chainId;
 
   if (!isConnected || !address) {
     return (
@@ -189,6 +226,24 @@ function DashboardPage() {
                   </div>
                 </div>
               </Link>
+              <button
+                onClick={() => {
+                  if (!address) { toast.error("Wallet non connesso"); return; }
+                  exportUserCsvMutation.mutate({ address });
+                }}
+                className="group relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 p-8 shadow-2xl transition-all hover:scale-105 hover:shadow-3xl"
+              >
+                <div className="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100"></div>
+                <div className="relative flex items-center justify-between">
+                  <div className="text-left">
+                    <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
+                      <Users className="h-6 w-6 text-white" />
+                    </div>
+                    <h3 className="mb-2 text-2xl font-bold text-white">Scarica il mio CSV</h3>
+                    <p className="text-indigo-100">Trasparenza dei tuoi dati</p>
+                  </div>
+                </div>
+              </button>
             </div>
 
             {/* Stats Overview */}
@@ -342,6 +397,20 @@ function DashboardPage() {
                               <span>Available</span>
                             </span>
                           )}
+                          {!profit.withdrawn && (() => {
+                            const isStableTokenLocal = /^(USDC|USDT|BUSD|DAI)$/i.test(profit.vaultSymbol || "");
+                            const tokens = isStableTokenLocal ? tokenAmountToNumber(profit.amount, 6) : tokenAmountToNumber(profit.amount, profit.vaultSymbol?.toUpperCase().includes("ETH") ? 18 : 6);
+                            const usd = isStableTokenLocal ? tokens : undefined;
+                            const threshold = chainMinThresholdUSD(chainId);
+                            if (typeof usd === 'number' && usd < threshold) {
+                              return (
+                                <div className="mt-1 text-xs text-indigo-600">
+                                  Batching: withdraw when ≥ ${threshold} USD
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       </div>
                     ))}
@@ -354,6 +423,42 @@ function DashboardPage() {
                       Profits will appear here as your investments grow
                     </p>
                   </div>
+                )}
+              </div>
+
+              <div className="rounded-2xl bg-white p-6 shadow-lg">
+                <h3 className="mb-4 flex items-center space-x-2 text-lg font-bold text-gray-900">
+                  <Users className="h-5 w-5 text-indigo-600" />
+                  <span>Affiliate Earnings</span>
+                </h3>
+                {affiliateStatsQuery.data ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Total Earnings</span>
+                      <span className="font-semibold text-gray-900">${formatUSDValue(tokenAmountToNumber(affiliateStatsQuery.data.totalEarnings, 6))}</span>
+                    </div>
+                    <div className="rounded-lg bg-indigo-50 p-3 text-xs text-indigo-900">
+                      <span className="font-medium">Batching:</span>
+                      <span className="ml-1">Withdraw when ≥ ${chainMinThresholdUSD(10)}</span>
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await trpc.requestWithdrawAffiliateEarnings.mutate({ userAddress: address! });
+                            toast.success("Affiliate withdrawal requested");
+                          } catch (e: any) {
+                            toast.error(e.message || "Cannot request affiliate withdrawal");
+                          }
+                        }}
+                        className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white"
+                      >
+                        Request Withdrawal
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No affiliate data</p>
                 )}
               </div>
             </div>

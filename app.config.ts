@@ -14,6 +14,24 @@ export default createApp({
       asyncContext: true,
     },
   },
+  // Bundle optimization
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor libraries
+          'vendor-react': ['react', 'react-dom', '@tanstack/react-query', '@tanstack/react-router'],
+          'vendor-ui': ['lucide-react', 'class-variance-authority', 'clsx'],
+          'vendor-web3': ['viem', 'wagmi', '@web3modal/wagmi'],
+          'vendor-ai': ['ai', '@ai-sdk/openai', '@ai-sdk/anthropic'],
+          // Route chunks
+          'dashboard': ['./src/routes/dashboard'],
+          'developers': ['./src/routes/developers'],
+          'api-docs': ['./src/routes/api-documentation'],
+        },
+      },
+    },
+  },
   routers: [
     {
       type: "static",
@@ -101,12 +119,12 @@ export default createApp({
           target: "react",
           autoCodeSplitting: true,
           routesDirectory: "./src/routes",
-          generatedRouteTree: "./src/generated/routeTree.gen.ts",
+          generatedRouteTree: "./src/generated/tanstack-router/routeTree.gen.ts",
         }),
         reactRefresh(),
         nodePolyfills(),
         consoleForwardPlugin({
-          enabled: true,
+          enabled: process.env.NODE_ENV !== "production",
           endpoint: "/api/debug/client-logs",
           levels: ["log", "warn", "error", "info", "debug"],
         }),

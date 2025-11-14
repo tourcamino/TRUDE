@@ -42,12 +42,17 @@ export type TransactionParams = {
   to: string;
   data?: string;
   value?: string; // hex value
+  gas?: string; // hex gas limit
 };
 
 export const sendTransaction = async (
   provider: Eip1193Provider,
   tx: TransactionParams,
 ): Promise<string> => {
+  try {
+    const gas: string = await provider.request({ method: "eth_estimateGas", params: [tx] });
+    tx.gas = gas;
+  } catch {}
   const txHash: string = await provider.request({
     method: "eth_sendTransaction",
     params: [tx],

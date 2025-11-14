@@ -3,6 +3,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider } from "@tanstack/react-router";
+import { TRPCReactProvider } from "./trpc/react";
 
 import "./styles.css";
 
@@ -16,7 +17,9 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <React.StrictMode>
-      <RouterProvider router={router} />
+      <TRPCReactProvider>
+        <RouterProvider router={router} />
+      </TRPCReactProvider>
     </React.StrictMode>,
   );
 }

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { db } from "~/server/db";
-import { baseProcedure } from "~/server/trpc/main";
+import { db } from "../../../server/db";
+import { baseProcedure } from "../../../server/trpc/main";
 import { randomBytes } from "crypto";
 
 export const createVault = baseProcedure

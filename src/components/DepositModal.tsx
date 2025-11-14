@@ -223,6 +223,32 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                 })()}
               </div>
 
+              {/* Fee Information */}
+              {selectedVault && (
+                <div className="rounded-lg bg-green-50 p-4 border border-green-200">
+                  <h4 className="text-sm font-semibold text-green-900 mb-2">📊 Fee Structure</h4>
+                  <div className="space-y-1 text-xs text-green-800">
+                    <div className="flex justify-between">
+                      <span>Deposit Fee:</span>
+                      <span className="font-medium">0%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Performance Fee:</span>
+                      <span className="font-medium">10-30% (dynamic)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Withdrawal Fee:</span>
+                      <span className="font-medium">0%</span>
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-green-200">
+                      <p className="text-xs text-green-700">
+                        💡 Performance fees are only charged on profits. No fees on deposits or withdrawals.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Submit Button */}
               <button
                 type="submit"

@@ -35,7 +35,7 @@ export const getDashboardStats = baseProcedure.query(async () => {
       userCount: users,
       affiliateCount: affiliates,
       isFallback: false,
-      recentVaults: vaults.slice(0, 5).map((v) => ({
+      recentVaults: vaults.slice(0, 5).map((v: any) => ({
         id: v.id,
         address: v.address,
         tokenSymbol: v.tokenSymbol,

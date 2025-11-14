@@ -1,41 +1,135 @@
-export type WalletConnectOptions = {
+import { EthereumProvider } from '@walletconnect/ethereum-provider';
+import type { IEthereumProvider } from '@walletconnect/ethereum-provider';
+
+export interface WalletConnectConfig {
   projectId: string;
-  chains?: number[];
-  optionalChains?: number[];
-  metadata?: {
+  metadata: {
     name: string;
-    description?: string;
     url: string;
-    icons?: string[];
+    icons: string[];
+    description?: string;
   };
-};
+  chains?: number[];
+  showQrModal?: boolean;
+  qrModalOptions?: {
+    themeMode?: 'light' | 'dark';
+    themeVariables?: Record<string, string>;
+  };
+}
 
-export async function createWalletConnectProvider(options: WalletConnectOptions) {
-  let EthereumProvider: any;
+export class WalletConnectProvider {
+  private provider: IEthereumProvider | null = null;
+  private config: WalletConnectConfig;
+
+  constructor(config: WalletConnectConfig) {
+    this.config = {
+      chains: [1, 31337], // Ethereum mainnet + local
+      showQrModal: true,
+      ...config
+    };
+  }
+
+  async initialize(): Promise<IEthereumProvider> {
+    try {
+      this.provider = await EthereumProvider.init({
+        projectId: this.config.projectId,
+        metadata: this.config.metadata,
+        chains: this.config.chains,
+        showQrModal: this.config.showQrModal,
+        qrModalOptions: this.config.qrModalOptions,
+        methods: ['eth_sendTransaction', 'eth_sign', 'eth_signTypedData', 'eth_signTypedData_v4'],
+        events: ['chainChanged', 'accountsChanged'],
+      });
+
+      // Auto-connect if session exists
+      if (this.provider.session) {
+        await this.connect();
+      }
+
+      return this.provider;
+    } catch (error) {
+      console.error('WalletConnect initialization failed:', error);
+      throw new Error(`WalletConnect init failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async connect(): Promise<string[]> {
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+
+    try {
+      await this.provider.connect();
+      return this.provider.accounts;
+    } catch (error) {
+      console.error('WalletConnect connection failed:', error);
+      throw new Error(`Connection failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async disconnect(): Promise<void> {
+    if (this.provider) {
+      await this.provider.disconnect();
+      this.provider = null;
+    }
+  }
+
+  getProvider(): IEthereumProvider | null {
+    return this.provider;
+  }
+
+  getAccounts(): string[] {
+    return this.provider?.accounts || [];
+  }
+
+  getChainId(): number {
+    return this.provider?.chainId || 1;
+  }
+
+  on(event: string, handler: (data: any) => void): void {
+    if (this.provider) {
+      this.provider.on(event, handler);
+    }
+  }
+
+  off(event: string, handler: (data: any) => void): void {
+    if (this.provider) {
+      this.provider.off(event, handler);
+    }
+  }
+}
+
+// Factory function for easy initialization
+export async function createWalletConnectProvider(config: WalletConnectConfig): Promise<WalletConnectProvider> {
+  const provider = new WalletConnectProvider(config);
+  await provider.initialize();
+  return provider;
+}
+
+// Utility function to send transactions via WalletConnect
+export async function sendTransactionViaWalletConnect(
+  provider: IEthereumProvider,
+  transaction: {
+    to: string;
+    data: string;
+    value?: string;
+    chainId?: number;
+  }
+): Promise<string> {
   try {
-    const mod = await import("@walletconnect/ethereum-provider");
-    EthereumProvider = (mod as any).default ?? (mod as any).EthereumProvider;
-  } catch (err) {
-    throw new Error(
-      "@walletconnect/ethereum-provider is not installed. Please add it to your project dependencies to use WalletConnect."
-    );
+    const txHash = await provider.request({
+      method: 'eth_sendTransaction',
+      params: [{
+        to: transaction.to,
+        data: transaction.data,
+        value: transaction.value || '0x0',
+        chainId: transaction.chainId ? `0x${transaction.chainId.toString(16)}` : undefined,
+      }],
+    });
+
+    return txHash as string;
+  } catch (error) {
+    console.error('Transaction failed:', error);
+    throw new Error(`Transaction failed: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  if (!EthereumProvider) {
-    throw new Error("WalletConnect EthereumProvider module not found.");
-  }
-
-  const provider = await EthereumProvider.init({
-    projectId: options.projectId,
-    chains: options.chains,
-    optionalChains: options.optionalChains,
-    metadata: options.metadata,
-    showQrModal: true,
-  });
-
-  return provider as unknown as {
-    request: (args: { method: string; params?: unknown[] | object }) => Promise<unknown>;
-    on?: (event: string, listener: (...args: any[]) => void) => void;
-    removeListener?: (event: string, listener: (...args: any[]) => void) => void;
-  };
 }

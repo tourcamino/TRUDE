@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { db } from "~/server/db";
-import { baseProcedure } from "~/server/trpc/main";
+import { db } from "../../../server/db";
+import { baseProcedure } from "../../../server/trpc/main";
 
 // This procedure handles deposits for stablecoins in the Ethereum environment
 // Amounts are stored as strings in the token's smallest unit (e.g., 10 USDC = 10000000 for 6 decimals)

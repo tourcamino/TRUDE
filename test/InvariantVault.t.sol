@@ -7,7 +7,7 @@ import {TrudeFactory} from "../contracts/TrudeFactory.sol";
 import {TrudeVault} from "../contracts/TrudeVault.sol";
 import {USDCMock} from "../contracts/USDCMock.sol";
 
-contract InvariantVaultTest is Test, StdInvariant {
+contract InvariantVaultTest is Test {
     TrudeFactory public factory;
     TrudeVault public vault;
     USDCMock public usdc;

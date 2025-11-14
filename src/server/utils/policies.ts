@@ -1,4 +1,4 @@
-import { db } from "~/server/db";
+import { db } from "../db";
 
 type Policy = {
   allowlist?: string[]; // vault addresses allowed

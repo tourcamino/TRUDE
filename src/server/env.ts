@@ -21,8 +21,15 @@ const envSchema = z.object({
   AUTOMATIC_WITHDRAW_ENABLED: z.string().optional(),
   // Admin token for TRPC protected procedures (dev/staging)
   TRPC_ADMIN_TOKEN: z.string().optional(),
+  // AI Provider API Keys
+  OPENAI_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  GOOGLE_API_KEY: z.string().optional(),
+  OPEN_ROUTER_API_KEY: z.string().optional(),
   // Prisma datasource — optional here; Prisma reads process.env.DATABASE_URL directly
   DATABASE_URL: z.string().optional(),
+  // Factory contract address
+  FACTORY_ADDRESS: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

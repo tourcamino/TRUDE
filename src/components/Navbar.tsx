@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Wallet, LayoutDashboard, Code, Users, Settings, LogOut, Copy, Check } from "lucide-react";
+import { Wallet, LayoutDashboard, Code, Users, Settings, LogOut, Copy, Check, Zap, TestTube, Bot } from "lucide-react";
 import { useState } from "react";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/react";
 import { useWalletStore } from "~/stores/walletStore";
@@ -55,6 +55,27 @@ export function Navbar() {
               >
                 <Code className="h-4 w-4" />
                 <span>Developers</span>
+              </Link>
+              <Link
+                to="/ai-execute-orders"
+                className="flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
+              >
+                <Bot className="h-4 w-4" />
+                <span>AI Execute</span>
+              </Link>
+              <Link
+                to="/api-showcase"
+                className="flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
+              >
+                <Zap className="h-4 w-4" />
+                <span>API Showcase</span>
+              </Link>
+              <Link
+                to="/trude-api-test"
+                className="flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
+              >
+                <TestTube className="h-4 w-4" />
+                <span>TRuDe API Test</span>
               </Link>
               <Link
                 to="/affiliates"

@@ -49,6 +49,7 @@ model Deposit {
   vaultId   Int
   amount    String   // Stablecoin amount in smallest unit (e.g., 10 USDC = 10000000 for 6 decimals)
   createdAt DateTime @default(now())
+  txHash    String?  @unique
   
   user      User     @relation(fields: [userId], references: [id])
   vault     Vault    @relation(fields: [vaultId], references: [id])
@@ -61,6 +62,7 @@ model Profit {
   amount     String   // Stablecoin profit amount in smallest unit
   withdrawn  Boolean  @default(false)
   createdAt  DateTime @default(now())
+  withdrawTxHash String? @unique
   
   user       User     @relation(fields: [userId], references: [id])
   vault      Vault    @relation(fields: [vaultId], references: [id])
@@ -72,6 +74,7 @@ model CapitalWithdrawal {
   vaultId   Int
   amount    String   // Stablecoin amount in smallest unit
   createdAt DateTime @default(now())
+  txHash    String?  @unique
 
   user      User     @relation(fields: [userId], references: [id])
   vault     Vault    @relation(fields: [vaultId], references: [id])

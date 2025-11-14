@@ -27,7 +27,11 @@ export default defineEventHandler(async (event) => {
       req: request,
       router: appRouter,
       createContext() {
-        return {};
+        const ipHeader = headers.get("x-forwarded-for") || headers.get("x-real-ip") || "";
+        const ip = (ipHeader.split(",")[0] || (event.node.req.socket as any)?.remoteAddress || "").trim();
+        const auth = headers.get("authorization") || "";
+        const adminToken = auth.startsWith("Bearer ") ? auth.slice(7) : undefined;
+        return { ip, adminToken } as any;
       },
       onError({ error, path }) {
         console.error(`tRPC error on '${path}':`, error);

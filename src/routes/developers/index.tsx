@@ -71,42 +71,27 @@ function DevelopersPage() {
             <p className="mt-2 text-gray-600">Choose the integration method that works best for your stack</p>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-3">
-            <div className="group rounded-2xl bg-white p-8 shadow-lg transition-all hover:shadow-xl">
-              <div className="mb-4 inline-flex rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-3 shadow-lg">
+          <div className="grid gap-8 md:grid-cols-1 lg:grid-cols-3 max-w-6xl mx-auto">
+            <div className="group rounded-2xl bg-white p-8 shadow-lg transition-all hover:shadow-xl hover:-translate-y-1 hover:scale-105 duration-300">
+              <div className="mb-4 inline-flex rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-3 shadow-lg group-hover:shadow-xl transition-shadow">
                 <Layers className="h-6 w-6 text-white" />
               </div>
-              <h3 className="mb-2 text-xl font-bold text-gray-900">REST API</h3>
+              <h3 className="mb-2 text-xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">tRPC HTTP API</h3>
               <p className="mb-4 text-gray-600">
-                Simple HTTP endpoints for depositing, withdrawing, and querying vault data. 
-                Perfect for web and mobile applications handling stablecoin yields.
+                Endpoints HTTP per preparare transazioni on‑chain e finalizzare gli stati lato server. 
+                Ideale per web e mobile con flussi non‑custodial.
               </p>
               <div className="flex items-center space-x-2 text-sm text-indigo-600">
                 <CheckCircle className="h-4 w-4" />
-                <span>Easy to integrate</span>
+                <span>Facile da integrare</span>
               </div>
             </div>
 
-            <div className="group rounded-2xl bg-white p-8 shadow-lg transition-all hover:shadow-xl">
-              <div className="mb-4 inline-flex rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 p-3 shadow-lg">
-                <Network className="h-6 w-6 text-white" />
-              </div>
-              <h3 className="mb-2 text-xl font-bold text-gray-900">GraphQL API</h3>
-              <p className="mb-4 text-gray-600">
-                Flexible queries for complex data requirements. Fetch exactly what you need 
-                with powerful filtering and pagination.
-              </p>
-              <div className="flex items-center space-x-2 text-sm text-indigo-600">
-                <CheckCircle className="h-4 w-4" />
-                <span>Flexible queries</span>
-              </div>
-            </div>
-
-            <div className="group rounded-2xl bg-white p-8 shadow-lg transition-all hover:shadow-xl">
-              <div className="mb-4 inline-flex rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 p-3 shadow-lg">
+            <div className="group rounded-2xl bg-white p-8 shadow-lg transition-all hover:shadow-xl hover:-translate-y-1 hover:scale-105 duration-300">
+              <div className="mb-4 inline-flex rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 p-3 shadow-lg group-hover:shadow-xl transition-shadow">
                 <GitBranch className="h-6 w-6 text-white" />
               </div>
-              <h3 className="mb-2 text-xl font-bold text-gray-900">Smart Contracts</h3>
+              <h3 className="mb-2 text-xl font-bold text-gray-900 group-hover:text-emerald-600 transition-colors">Smart Contracts</h3>
               <p className="mb-4 text-gray-600">
                 Direct on-chain integration for maximum decentralization. 
                 Interact with vaults directly from your smart contracts.
@@ -114,6 +99,20 @@ function DevelopersPage() {
               <div className="flex items-center space-x-2 text-sm text-indigo-600">
                 <CheckCircle className="h-4 w-4" />
                 <span>Fully decentralized</span>
+              </div>
+            </div>
+
+            <div className="group rounded-2xl bg-white p-8 shadow-lg transition-all hover:shadow-xl hover:-translate-y-1 hover:scale-105 duration-300">
+              <div className="mb-4 inline-flex rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 p-3 shadow-lg group-hover:shadow-xl transition-shadow">
+                <Network className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="mb-2 text-xl font-bold text-gray-900 group-hover:text-purple-600 transition-colors">SDK & Libraries</h3>
+              <p className="mb-4 text-gray-600">
+                TypeScript SDK with type-safe methods, React hooks, and Vue composables for rapid development.
+              </p>
+              <div className="flex items-center space-x-2 text-sm text-indigo-600">
+                <CheckCircle className="h-4 w-4" />
+                <span>Type-safe development</span>
               </div>
             </div>
           </div>
@@ -184,31 +183,51 @@ function DevelopersPage() {
             <p className="mt-2 text-gray-600">Get started with TRUDE integration in minutes</p>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-2">
+          <div className="grid gap-8 lg:grid-cols-2 xl:grid-cols-3">
             {/* REST API Example */}
-            <div className="rounded-2xl bg-white p-6 shadow-lg">
+            <div className="rounded-2xl bg-white p-6 shadow-lg transition-all hover:shadow-xl">
               <div className="mb-4 flex items-center space-x-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
                   <Terminal className="h-5 w-5 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Deposit via REST API</h3>
+              <h3 className="text-xl font-bold text-gray-900">Deposit via Prepared Tx</h3>
               </div>
               <div className="rounded-xl bg-gray-900 p-4">
                 <pre className="overflow-x-auto text-sm text-gray-100">
-                  <code>{`POST /api/trpc/createDeposit
+                  <code>{`POST /api/trpc/prepareDeposit
 
 {
   "userAddress": "0x123...",
   "vaultId": 1,
+  "amount": "10000000"
+}
+
+// Response (excerpt)
+{
+  "success": true,
+  "prepared": {
+    "approveTx": { "to": "0xToken...", "data": "0x...", "value": "0x0", "chainId": 31337 },
+    "depositTx": { "to": "0xVault...", "data": "0x...", "value": "0x0", "chainId": 31337 }
+  }
+}
+
+// Client-side broadcast (approve then deposit)
+ethereum.request({ method: 'eth_sendTransaction', params: [approveTx] })
+ethereum.request({ method: 'eth_sendTransaction', params: [depositTx] })
+
+// Finalize on server (update TVL)
+POST /api/trpc/finalizeDeposit
+{
+  "userAddress": "0x123...",
+  "vaultId": 1,
   "amount": "10000000",
-  "affiliateAddress": "0xAFF..."
+  "txHash": "0x..."
 }`}</code>
                 </pre>
               </div>
               <p className="mt-4 text-sm text-gray-600">
-                Create a deposit by sending a POST request with the user's address, vault ID, 
-                and amount in the token's smallest unit (e.g., 10 USDC = 10000000 with 6 decimals). 
-                Optional affiliate address for referral tracking.
+                Prepare and execute deposits fully on-chain using the user's wallet. Amounts are provided in the token's smallest unit (e.g., 10 USDC = 10000000 with 6 decimals).
+                After on-chain confirmation, call <code>finalizeDeposit</code> to update server-side TVL and logs.
               </p>
             </div>
 
@@ -218,7 +237,7 @@ function DevelopersPage() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-emerald-600">
                     <Terminal className="h-5 w-5 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900">Withdraw Profits</h3>
+                  <h3 className="text-xl font-bold text-gray-900">Withdraw Profits (Prepared Tx)</h3>
                 </div>
                 <div className="rounded-xl bg-gray-900 p-4">
                   <pre className="overflow-x-auto text-sm text-gray-100">
@@ -243,7 +262,7 @@ ethereum.request({ method: 'eth_sendTransaction', params: [{
   value: preparedTx.value
 }] })
 
-// Finalizzazione lato server
+// Finalize on server
 POST /api/trpc/finalizeProfitWithdrawal
 {
   "userAddress": "0x123...",
@@ -253,9 +272,8 @@ POST /api/trpc/finalizeProfitWithdrawal
                   </pre>
               </div>
               <p className="mt-4 text-sm text-gray-600">
-                Profit withdrawal returns a <span className="font-semibold">prepared transaction</span> to be sent with the user's wallet. 
-                Gas costs are always paid by the customer and the application <span className="font-semibold">does not broadcast</span> transactions on-chain. 
-                After on-chain confirmation, call <code>finalizeProfitWithdrawal</code> with the transaction hash to update status and TVL.
+                Profit withdrawal returns a <span className="font-semibold">prepared transaction</span> for the user's wallet. Gas costs are paid by the customer; the application does not broadcast transactions.
+                After confirmation, call <code>finalizeProfitWithdrawal</code> to update status and TVL.
               </p>
               </div>
 
@@ -508,42 +526,7 @@ await sendPreparedTx(preparedTx, wcProvider);
               </div>
             </div>
 
-            <div className="rounded-2xl bg-white p-6 shadow-lg md:col-span-2">
-              <div className="mb-4 flex items-center space-x-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-600">
-                  <Lock className="h-5 w-5 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900">Custodial / Enterprise (EIP‑712)</h3>
-              </div>
-              <p className="text-sm text-gray-600">
-                For custodial/enterprise wallets, use <span className="font-semibold">EIP‑712</span> with off‑chain signing and client/provider broadcast.
-                The helper <code>~/utils/eip712.ts</code> builds the <code>WithdrawalAuthorization</code> typed data for signing and verification.
-              </p>
-              <div className="mt-3 rounded-xl bg-gray-900 p-4">
-                <pre className="overflow-x-auto text-sm text-gray-100">
-                  <code>{`import { buildWithdrawalAuthorizationTypedData } from "~/utils/eip712";
-
-const typedData = buildWithdrawalAuthorizationTypedData({
-  chainId: 31337,
-  verifyingContract: "0xFactoryOrVerifier...",
-  data: {
-    user: "0x123...",
-    vaultId: 1,
-    amount: "1000000",
-    nonce: "0x...",
-    deadline: 1731000000,
-  },
-});
-// provider.request({ method: 'eth_signTypedData_v4', params: [user, JSON.stringify(typedData)] })
-`}</code>
-                </pre>
-              </div>
-              <div className="mt-3 rounded-lg bg-purple-50 p-3 text-xs text-purple-900">
-                Recommended mode: <span className="font-semibold">Auto “preparation‑only”</span> — the endpoint validates <span className="font-semibold">policies</span> and returns <code>preparedTx</code>.
-                The integrator broadcasts with their wallet/infra, preserving <span className="font-semibold">gas paid by customer/integrator</span>.
-                Policies are <span className="font-semibold">upgradable</span> and enforce allowlist, per‑tx/daily limits, and custodial flag.
-              </div>
-            </div>
+            
           </div>
         </div>
 
@@ -557,50 +540,25 @@ const typedData = buildWithdrawalAuthorizationTypedData({
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-xl bg-white p-6 shadow-lg">
               <Lock className="mb-3 h-8 w-8 text-indigo-600" />
-              <h3 className="mb-2 text-lg font-bold text-gray-900">Non-Custodial</h3>
+              <h3 className="mb-2 text-lg font-bold text-gray-900">Non‑Custodial</h3>
               <p className="text-sm text-gray-600">
-                Your users maintain full control of their funds. TRUDE never takes custody, 
-                ensuring maximum security and trust.
+                Gli utenti mantengono il controllo dei fondi. TRUDE non li custodisce.
               </p>
             </div>
 
             <div className="rounded-xl bg-white p-6 shadow-lg">
               <Shield className="mb-3 h-8 w-8 text-green-600" />
-              <h3 className="mb-2 text-lg font-bold text-gray-900">Smart Contract Compliance</h3>
+              <h3 className="mb-2 text-lg font-bold text-gray-900">Contratti Auditabili</h3>
               <p className="text-sm text-gray-600">
-                All operations are governed by audited smart contracts with transparent on-chain execution.
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-white p-6 shadow-lg">
-              <Zap className="mb-3 h-8 w-8 text-purple-600" />
-              <h3 className="mb-2 text-lg font-bold text-gray-900">AI-Driven Optimization</h3>
-              <p className="text-sm text-gray-600">
-                Advanced algorithms continuously optimize yield strategies to maximize returns for your users.
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-white p-6 shadow-lg">
-              <Network className="mb-3 h-8 w-8 text-blue-600" />
-              <h3 className="mb-2 text-lg font-bold text-gray-900">Multi-Protocol Support</h3>
-              <p className="text-sm text-gray-600">
-                Integrate with multiple DeFi protocols through a single, unified API interface.
+                Operazioni governate da smart contract; CI di sicurezza attiva per analisi statiche.
               </p>
             </div>
 
             <div className="rounded-xl bg-white p-6 shadow-lg">
               <BookOpen className="mb-3 h-8 w-8 text-orange-600" />
-              <h3 className="mb-2 text-lg font-bold text-gray-900">Comprehensive Docs</h3>
+              <h3 className="mb-2 text-lg font-bold text-gray-900">Documentazione</h3>
               <p className="text-sm text-gray-600">
-                Detailed documentation, code examples, and SDKs to accelerate your integration.
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-white p-6 shadow-lg">
-              <CheckCircle className="mb-3 h-8 w-8 text-pink-600" />
-              <h3 className="mb-2 text-lg font-bold text-gray-900">Production Ready</h3>
-              <p className="text-sm text-gray-600">
-                Battle-tested infrastructure serving thousands of users with 99.9% uptime.
+                Esempi chiari di integrazione e flussi prepared/finalize per ridurre errori.
               </p>
             </div>
           </div>
@@ -634,3 +592,65 @@ const typedData = buildWithdrawalAuthorizationTypedData({
     </div>
   );
 }
+            {/* Create Vault via Factory */}
+            <div className="rounded-2xl bg-white p-6 shadow-lg">
+              <div className="mb-4 flex items-center space-x-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-gray-700 to-black">
+                  <Terminal className="h-5 w-5 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Create Vault (Factory)</h3>
+              </div>
+              <div className="rounded-xl bg-gray-900 p-4">
+                <pre className="overflow-x-auto text-sm text-gray-100">
+                  <code>{`POST /api/trpc/prepareCreateVault
+
+{
+  "tokenAddress": "0xToken..."
+}
+
+// Broadcast with admin wallet
+ethereum.request({ method: 'eth_sendTransaction', params: [preparedTx] })
+
+// Finalize in DB
+POST /api/trpc/finalizeCreateVault
+{
+  "vaultAddress": "0xVault...",
+  "tokenAddress": "0xToken...",
+  "tokenSymbol": "USDC",
+  "ownerAddress": "0xOwner...",
+  "ledgerAddress": "0xLedger..."
+}`}</code>
+                </pre>
+              </div>
+              <p className="mt-4 text-sm text-gray-600">
+                Use <code>Factory.createVault</code> to deploy new vaults on-chain and register them in the application database.
+              </p>
+            </div>
+
+            {/* Update Factory Settings On-Chain */}
+            <div className="rounded-2xl bg-white p-6 shadow-lg">
+              <div className="mb-4 flex items-center space-x-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-slate-500 to-slate-700">
+                  <Terminal className="h-5 w-5 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Update Factory Settings (On-Chain)</h3>
+              </div>
+              <div className="rounded-xl bg-gray-900 p-4">
+                <pre className="overflow-x-auto text-sm text-gray-100">
+                  <code>{`POST /api/trpc/prepareUpdateFactorySettingsOnChain
+
+{
+  "minDeposit": "10000000",
+  "affiliateShareBps": 5000,
+  "maxFeePercent": 20
+}
+
+// Returns a list of prepared tx to broadcast with admin wallet
+// Apply only the required updates
+`}</code>
+                </pre>
+              </div>
+              <p className="mt-4 text-sm text-gray-600">
+                Generate on-chain setter transactions for Factory parameters (minimum deposit, affiliate share bps, max fee percent).
+              </p>
+            </div>

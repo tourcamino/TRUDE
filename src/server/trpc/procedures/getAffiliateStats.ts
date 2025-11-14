@@ -37,7 +37,7 @@ export const getAffiliateStats = baseProcedure
     return {
       totalEarnings: totalEarnings.toString(),
       referralCount: user.referredUsers.length,
-      referrals: user.referredUsers.map((a) => ({
+      referrals: user.referredUsers.map((a: any) => ({
         address: a.user.address,
         earnings: a.totalEarnings,
         joinedAt: a.createdAt,

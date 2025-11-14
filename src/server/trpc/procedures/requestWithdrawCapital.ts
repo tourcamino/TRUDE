@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { db } from "~/server/db";
-import { baseProcedure } from "~/server/trpc/main";
-import { enforcePolicy } from "~/server/utils/policies";
-import { buildWithdrawDomain, verifyWithdrawSignature, computeRequestHash } from "~/server/utils/eip712";
-import { env } from "~/server/env";
-import { buildWithdrawCalldata } from "~/server/utils/onchain";
+import { db } from "../../../server/db";
+import { baseProcedure } from "../../../server/trpc/main";
+import { enforcePolicy } from "../../../server/utils/policies";
+import { buildWithdrawDomain, verifyWithdrawSignature, computeRequestHash } from "../../../server/utils/eip712";
+import { env } from "../../../server/env";
+import { buildWithdrawCalldata } from "../../../server/utils/onchain";
 
 export const requestWithdrawCapital = baseProcedure
   .input(

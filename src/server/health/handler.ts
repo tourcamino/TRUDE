@@ -16,6 +16,7 @@ export default defineEventHandler(async () => {
       ok: true,
       nodeEnv: env.NODE_ENV,
       baseUrl: env.BASE_URL ?? null,
+      chainId: env.CHAIN_ID ? Number(env.CHAIN_ID) : null,
       databaseUrlPresent: !!process.env.DATABASE_URL,
       databaseOk,
       databasePingMs,

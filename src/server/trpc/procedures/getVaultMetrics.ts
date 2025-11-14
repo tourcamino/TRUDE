@@ -55,22 +55,22 @@ export const getVaultMetrics = baseProcedure
       ]);
 
       // 30d yield based on credited profits vs current TVL
-      const sumProfits30d = recentProfits.reduce((acc, p) => acc + toNum(p.amount), 0);
+      const sumProfits30d = recentProfits.reduce((acc: number, p: any) => acc + toNum(p.amount), 0);
       const tvlNum = Math.max(1, toNum(v.totalValueLocked));
       const yield30d = tvlNum > 0 ? sumProfits30d / tvlNum : 0;
       const apr30d = yield30d * (365 / 30);
 
       // 24h net change
-      const deposits24h = recentDeposits.filter(d => d.createdAt >= from24h).reduce((acc, d) => acc + toNum(d.amount), 0);
-      const profits24h = recentProfits.filter(p => p.createdAt >= from24h).reduce((acc, p) => acc + toNum(p.amount), 0);
-      const withdrawals24h = recentWithdrawals.filter(w => w.createdAt >= from24h).reduce((acc, w) => acc + toNum(w.amount), 0);
+      const deposits24h = recentDeposits.filter((d: any) => d.createdAt >= from24h).reduce((acc: number, d: any) => acc + toNum(d.amount), 0);
+      const profits24h = recentProfits.filter((p: any) => p.createdAt >= from24h).reduce((acc: number, p: any) => acc + toNum(p.amount), 0);
+      const withdrawals24h = recentWithdrawals.filter((w: any) => w.createdAt >= from24h).reduce((acc: number, w: any) => acc + toNum(w.amount), 0);
       const net24h = deposits24h + profits24h - withdrawals24h;
 
       // Sparkline: cumulative net changes over recent events
       const events = [
-        ...recentDeposits.map(d => ({ date: d.createdAt, delta: +toNum(d.amount) })),
-        ...recentProfits.map(p => ({ date: p.createdAt, delta: +toNum(p.amount) })),
-        ...recentWithdrawals.map(w => ({ date: w.createdAt, delta: -toNum(w.amount) })),
+        ...recentDeposits.map((d: any) => ({ date: d.createdAt, delta: +toNum(d.amount) })),
+        ...recentProfits.map((p: any) => ({ date: p.createdAt, delta: +toNum(p.amount) })),
+        ...recentWithdrawals.map((w: any) => ({ date: w.createdAt, delta: -toNum(w.amount) })),
       ].sort((a, b) => a.date.getTime() - b.date.getTime());
 
       // Limit to last 20 points for compact chart

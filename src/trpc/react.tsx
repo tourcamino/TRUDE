@@ -40,6 +40,14 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
           false: httpBatchLink({
             transformer: SuperJSON,
             url: getBaseUrl() + "/trpc",
+            headers() {
+              try {
+                const t = typeof window !== "undefined" ? window.localStorage.getItem("trpc_admin_token") : null;
+                return t ? { Authorization: `Bearer ${t}` } : {};
+              } catch {
+                return {};
+              }
+            },
           }),
           true: httpSubscriptionLink({
             transformer: SuperJSON,

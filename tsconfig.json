@@ -9,7 +9,9 @@
   ],
   "exclude": [
     "test/**/*.ts",
-    "test/**/*.tsx"
+    "test/**/*.tsx",
+    "test-edge-cases.ts",
+    "scripts/**/*.ts"
   ],
   "compilerOptions": {
     "strict": true,

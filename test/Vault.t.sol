@@ -14,7 +14,7 @@ contract VaultTest {
         factory.initialize(address(this), address(this), 10_000_000);
 
         TrudeAffiliate affiliate = new TrudeAffiliate();
-        affiliate.initialize(address(factory));
+        affiliate.initialize(address(this), address(factory));
         factory.setAffiliateTracker(address(affiliate));
 
         address vaultAddr = factory.createVault(address(usdc));

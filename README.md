@@ -11,7 +11,8 @@ CI badges and workflow artifacts:
 - Pre-Deploy Gate (OP Sepolia): [![Pre-Deploy](https://github.com/tourcamino/TRUDE/actions/workflows/pre-deploy.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/pre-deploy.yml)
 - Securify2: [![Securify2](https://github.com/tourcamino/TRUDE/actions/workflows/securify2.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/securify2.yml)
 - Gas Check: [![Gas Check](https://github.com/tourcamino/TRUDE/actions/workflows/gas-check.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/gas-check.yml)
- - OpenZeppelin Sync: [![OpenZeppelin Sync](https://github.com/tourcamino/TRUDE/actions/workflows/openzeppelin-sync.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/openzeppelin-sync.yml)
+- OpenZeppelin Sync: [![OpenZeppelin Sync](https://github.com/tourcamino/TRUDE/actions/workflows/openzeppelin-sync.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/openzeppelin-sync.yml)
+ - Vercel Deploy: [![Vercel Deploy](https://github.com/tourcamino/TRUDE/actions/workflows/vercel-deploy.yml/badge.svg)](https://github.com/tourcamino/TRUDE/actions/workflows/vercel-deploy.yml)
 
 Generated artifacts (downloadable from the workflow run page):
 
@@ -106,3 +107,9 @@ Note: badges updated for `tourcamino/TRUDE`.
 ## Health Check
 
 - Endpoint: `GET /api/health` returns `{ ok, nodeEnv, baseUrl, databaseUrlPresent, databaseOk, databasePingMs }` with a minimal DB ping via Prisma.
+- ## Deployment (Vercel)
+
+- CI deploy: `.github/workflows/vercel-deploy.yml` builds and deploys using Vercel GitHub Action.
+- Required secrets in GitHub:
+  - `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
+- Project settings: set build command to `pnpm run build` and root to `trude/`.

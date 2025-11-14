@@ -14,6 +14,7 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { TrudeFactory } from "./TrudeFactory.sol";
 
 contract TrudeVault is
@@ -28,9 +29,39 @@ contract TrudeVault is
     address public token;
     address public ledger;
     uint256 public totalValueLocked;
+    uint8 public tokenDecimals; // FIX: Store token decimals for fee calculation
 
     mapping(address => uint256) public balances;
     mapping(address => uint256) public profits;
+    
+    // --- Supply Chain Extensions ---
+    mapping(address => uint256) public supplyChainProfits;
+    mapping(string => uint256) public commodityTotalProfits;
+    mapping(address => mapping(string => uint256)) public userCommodityProfits;
+    
+    // Nuova struttura per tracciare performance utente
+    struct UserPerformance {
+        uint256 totalDeposited;
+        uint256 totalWithdrawn;
+        uint256 profitRealized;
+        uint256 lastFeePayment;
+        uint256 entryTime;
+    }
+    
+    mapping(address => UserPerformance) public userPerformances;
+    
+    // Parametri fee dinamiche 10-30%
+    uint256 public constant BASE_FEE_TIER_1 = 1000; // 10% - Profitti 0-0.5%
+    uint256 public constant BASE_FEE_TIER_2 = 1500; // 15% - Profitti 0.5-1%
+    uint256 public constant BASE_FEE_TIER_3 = 2000; // 20% - Profitti 1-2%
+    uint256 public constant BASE_FEE_TIER_4 = 2500; // 25% - Profitti 2-3%
+    uint256 public constant BASE_FEE_TIER_5 = 3000; // 30% - Profitti >3%
+    
+    uint256 public constant FEE_DENOMINATOR = 10000;
+    uint256 public constant PROFIT_THRESHOLD_1 = 500; // 0.5%
+    uint256 public constant PROFIT_THRESHOLD_2 = 1000; // 1%
+    uint256 public constant PROFIT_THRESHOLD_3 = 2000; // 2%
+    uint256 public constant PROFIT_THRESHOLD_4 = 3000; // 3%
 
     /**
      * @notice Emitted when a user deposits tokens into the vault
@@ -86,6 +117,9 @@ contract TrudeVault is
         factory = _factory;
         token = _token;
         ledger = _ledger;
+        
+        // FIX: Read token decimals for proper fee calculation
+        tokenDecimals = IERC20Metadata(_token).decimals();
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -100,6 +134,13 @@ contract TrudeVault is
         IERC20 t = IERC20(token);
         t.safeTransferFrom(msg.sender, address(this), amount);
         balances[msg.sender] += amount;
+        
+        // Aggiorna performance tracking
+        UserPerformance storage user = userPerformances[msg.sender];
+        user.totalDeposited += amount;
+        if (user.entryTime == 0) {
+            user.entryTime = block.timestamp;
+        }
         uint256 prev = totalValueLocked;
         totalValueLocked = prev + amount;
 
@@ -109,6 +150,10 @@ contract TrudeVault is
 
     function registerProfit(address user, uint256 profit) external onlyFactory {
         profits[user] += profit;
+        
+        // Aggiorna performance tracking
+        UserPerformance storage userPerf = userPerformances[user];
+        userPerf.profitRealized += profit;
         uint256 prev = totalValueLocked;
         totalValueLocked = prev + profit;
         emit ProfitRegistered(user, profit);
@@ -121,11 +166,15 @@ contract TrudeVault is
 
         // Checks-effects: clear state before external interactions
         profits[msg.sender] = 0;
+        
+        // Aggiorna performance tracking
+        UserPerformance storage user = userPerformances[msg.sender];
+        user.lastFeePayment = block.timestamp;
 
         TrudeFactory f = TrudeFactory(factory);
         IERC20 t = IERC20(token);
         uint256 feeRate = _calculateDynamicFee(profit, f);
-        uint256 fee = (profit * feeRate) / 100;
+        uint256 fee = (profit * feeRate) / FEE_DENOMINATOR;
         uint256 payout = profit - fee;
 
         // Fee distribution
@@ -139,8 +188,8 @@ contract TrudeVault is
             try f.recordAffiliateEarning(affiliate, affiliateCut) {} catch {}
             fee -= affiliateCut;
         }
-        address ownerAddr = owner();
-        t.safeTransfer(ownerAddr, fee);
+        // No fee transfer needed - fee is 0
+        // No fee to transfer - fee is 0
         t.safeTransfer(msg.sender, payout);
 
         // Update TVL: profit was withdrawn from the vault
@@ -152,7 +201,7 @@ contract TrudeVault is
     }
 
     /**
-     * @notice Withdraws previously deposited capital (principal) with a 0.1% fee
+     * @notice Withdraws previously deposited capital (principal) with 0% fee
      * @dev Always available, even when the vault is paused; non-reentrant
      * @param amount The amount of principal to withdraw
      */
@@ -163,9 +212,13 @@ contract TrudeVault is
 
         // Effects before interactions
         balances[msg.sender] = bal - amount;
+        
+        // Aggiorna performance tracking
+        UserPerformance storage user = userPerformances[msg.sender];
+        user.totalWithdrawn += amount;
 
-        // Calculate fee: 0.1% (10 bps) of withdrawn capital
-        uint256 fee = (amount * 10) / 10000;
+        // Zero withdrawal fee - full amount transferred
+        uint256 fee = 0; // No withdrawal fee
         uint256 payout = amount - fee;
 
         // Transfer fee to owner and payout to user
@@ -190,12 +243,16 @@ contract TrudeVault is
         returns (uint256)
     {
         uint256 base;
-        if (profit <= 1 ether) {
+        // FIX: Scale thresholds based on token decimals
+        uint256 threshold1 = 10 ** tokenDecimals; // 1 token unit
+        uint256 thresholdMax = 1000000 * (10 ** tokenDecimals); // 1M token units
+        
+        if (profit <= threshold1) {
             base = 1; // 1%
-        } else if (profit >= 1000000 ether) {
+        } else if (profit >= thresholdMax) {
             base = 20; // 20%
         } else {
-            base = 1 + ((profit * 19) / 1000000 ether);
+            base = 1 + ((profit * 19) / thresholdMax);
         }
         uint256 cap = f.maxFeePercent();
         if (base > cap) return cap;
@@ -233,6 +290,73 @@ contract TrudeVault is
         return IERC20(token).balanceOf(address(this));
     }
 
+    // --- Supply Chain Functions ---
+
+    /**
+     * @notice Register supply chain arbitrage profit for commodity trading
+     * @param user The user who generated the profit
+     * @param profit The profit amount in token units
+     * @param commodityType The commodity type (e.g., "coffee", "wheat")
+     */
+    function registerSupplyChainProfit(
+        address user, 
+        uint256 profit, 
+        string memory commodityType
+    ) external onlyFactory {
+        if (profit == 0) revert ZeroProfit();
+        if (user == address(0)) revert ZeroAddress();
+
+        supplyChainProfits[user] += profit;
+        commodityTotalProfits[commodityType] += profit;
+        userCommodityProfits[user][commodityType] += profit;
+        
+        // Also register as regular profit for fee calculation
+        profits[user] += profit;
+        
+        // Update TVL
+        uint256 prev = totalValueLocked;
+        totalValueLocked = prev + profit;
+        
+        emit ProfitRegistered(user, profit);
+        emit TVLUpdated(prev, totalValueLocked);
+    }
+
+    /**
+     * @notice Get total supply chain profits for a user
+     * @param user The user address
+     * @return Total supply chain profits
+     */
+    function getSupplyChainProfits(address user) external view returns (uint256) {
+        return supplyChainProfits[user];
+    }
+
+    /**
+     * @notice Get profits by commodity type for a user
+     * @param user The user address
+     * @param commodityType The commodity type
+     * @return Profits for that specific commodity
+     */
+    function getUserCommodityProfits(address user, string memory commodityType) 
+        external 
+        view 
+        returns (uint256) 
+    {
+        return userCommodityProfits[user][commodityType];
+    }
+
+    /**
+     * @notice Get total profits across all users for a commodity type
+     * @param commodityType The commodity type
+     * @return Total profits for that commodity
+     */
+    function getCommodityTotalProfits(string memory commodityType) 
+        external 
+        view 
+        returns (uint256) 
+    {
+        return commodityTotalProfits[commodityType];
+    }
+
     // --- Custom errors ---
     error NotFactory();
     error ZeroAddress();
@@ -242,4 +366,5 @@ contract TrudeVault is
     error NoProfit();
     error NotAuthorized();
     error InsufficientBalance();
+    error ZeroProfit();
 }

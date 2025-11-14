@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { db } from "~/server/db";
-import { baseProcedure } from "~/server/trpc/main";
+import { db } from "../../../server/db";
+import { baseProcedure } from "../../../server/trpc/main";
 
 // Finalize a capital withdrawal request after on-chain execution
 // Marks the request as EXECUTED, records txHash, creates CapitalWithdrawal entry, and updates Vault TVL

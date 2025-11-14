@@ -82,19 +82,19 @@ export const getUserDashboard = baseProcedure
 
     // Build performance data for graph (combine deposits and profits chronologically)
     const performanceEvents = [
-      ...user.deposits.map(d => ({
+      ...user.deposits.map((d: any) => ({
         date: d.createdAt,
         type: 'deposit' as const,
         amount: d.amount,
         vaultSymbol: d.vault.tokenSymbol,
       })),
-      ...user.withdrawals.map(w => ({
+      ...user.withdrawals.map((w: any) => ({
         date: w.createdAt,
         type: 'withdrawal' as const,
         amount: w.amount,
         vaultSymbol: w.vault.tokenSymbol,
       })),
-      ...user.profits.map(p => ({
+      ...user.profits.map((p: any) => ({
         date: p.createdAt,
         type: 'profit' as const,
         amount: p.amount,

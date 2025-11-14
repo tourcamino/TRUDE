@@ -1,9 +1,27 @@
 services:
   - type: web
-    name: trude-app
+    name: trude-defi-app
     env: node
-    rootDir: .
-    buildCommand: pnpm install --frozen-lockfile && pnpm run build
-    startCommand: pnpm run start:render
-    autoDeploy: true
-    healthCheckPath: /
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_FALLBACK_MEM
+        value: "1"
+      - key: FACTORY_ADDRESS
+        value: "0x0000000000000000000000000000000000000000"
+      - key: PORT
+        value: 3000
+    buildFilter:
+      paths:
+        - package.json
+        - package-lock.json
+        - prisma/schema.prisma
+        - src/**
+        - public/**
+        - .vinxi/**
+    disk:
+      name: trude-data
+      mountPath: /data
+      sizeGB: 1

@@ -1,6 +1,10 @@
-import { env } from "~/server/env";
+import { env } from "../env";
 import { Wallet, JsonRpcProvider, Contract, Interface } from "ethers";
-import vaultArtifact from "../../../artifacts/contracts/TrudeVault.sol/TrudeVault.json" assert { type: "json" };
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const vaultArtifact = require("../../../artifacts/contracts/TrudeVault.sol/TrudeVault.json");
+const factoryArtifact = require("../../../artifacts/contracts/TrudeFactory.sol/TrudeFactory.json");
+const erc20Iface = new Interface(["function approve(address,uint256)", "function decimals() view returns (uint8)"]);
 
 export function getProvider(): JsonRpcProvider {
   const url = env.CHAIN_RPC_URL || "http://127.0.0.1:8545";
@@ -36,4 +40,38 @@ export function buildWithdrawCalldata(amount: bigint): string {
 export function buildWithdrawProfitCalldata(amount: bigint): string {
   const iface = new Interface((vaultArtifact as any).abi);
   return iface.encodeFunctionData("withdrawProfit", [amount]);
+}
+
+export function buildDepositCalldata(amount: bigint): string {
+  const iface = new Interface((vaultArtifact as any).abi);
+  return iface.encodeFunctionData("deposit", [amount]);
+}
+
+export function buildApproveCalldata(spender: string, amount: bigint): string {
+  return erc20Iface.encodeFunctionData("approve", [spender, amount]);
+}
+
+export function buildCreateVaultCalldata(tokenAddress: string): string {
+  const iface = new Interface((factoryArtifact as any).abi);
+  return iface.encodeFunctionData("createVault", [tokenAddress]);
+}
+
+export function buildSetMinDepositCalldata(value: bigint): string {
+  const iface = new Interface((factoryArtifact as any).abi);
+  return iface.encodeFunctionData("setMinDeposit", [value]);
+}
+
+export function buildSetAffiliateShareBpsCalldata(bps: number): string {
+  const iface = new Interface((factoryArtifact as any).abi);
+  return iface.encodeFunctionData("setAffiliateShareBps", [bps]);
+}
+
+export function buildSetMaxFeePercentCalldata(percent: number): string {
+  const iface = new Interface((factoryArtifact as any).abi);
+  return iface.encodeFunctionData("setMaxFeePercent", [percent]);
+}
+
+export function buildRegisterAffiliateCalldata(user: string, affiliate: string): string {
+  const iface = new Interface((factoryArtifact as any).abi);
+  return iface.encodeFunctionData("registerAffiliate", [user, affiliate]);
 }
